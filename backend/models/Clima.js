@@ -1,0 +1,3 @@
+// class Clima{
+//     constructor(temperatura)
+// }
