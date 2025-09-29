@@ -7,19 +7,37 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Directorios de dependencias
+node_modules/
+backend/node_modules/
+frontend/node_modules/ # Corrección aquí: 'frontend'
 
-./frontned/node_modules
-dist
-dist-ssr
-*.local
+# Directorios de compilación y caché
+dist/
+dist-ssr/
+.vite/               # Añadido: Carpeta de caché de Vite (en el frontend)
+.history/            # Añadido: Para editores como VS Code
+*.local              # Archivos de configuración local (ej. .env.local)
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+.vscode/
+!.vscode/extensions.json # Excepto este, si quieres compartir extensiones recomendadas
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Archivos de entorno
+.env
+.env.local
+.env.*.local
+
+# Archivos de imagen generados (si los hubiera)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
