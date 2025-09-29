@@ -1,1 +1,0 @@
-import {userData} from './data/user.js'

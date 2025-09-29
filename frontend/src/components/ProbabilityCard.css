@@ -1,0 +1,126 @@
+/* src/components/UI/ProbabilityCard.css */
+
+/* --- Colores de Riesgo (usados por la tarjeta) --- */
+:root {
+    --risk-low-color: #4CAF50;    /* Verde */
+    --risk-medium-color: #8BC34A; /* Verde más claro */
+    --risk-high-color: #FF9800;   /* Naranja */
+    --risk-extreme-color: #F44336; /* Rojo */
+
+    /* Colores base de la paleta amigable */
+    --color-card-bg: #FFFFFF;
+    --color-text-dark: #333333;
+    --color-text-secondary: #757575;
+    --color-primary-indigo: #3F51B5;
+    --color-primary-blue: #2196F3;
+    --color-border-subtle: rgba(0, 0, 0, 0.1);
+}
+
+.probability-card {
+    background-color: var(--color-card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    overflow: hidden; /* Para que la barra de riesgo no se salga */
+    text-align: center;
+    transition: transform 0.2s ease-in-out;
+}
+
+.probability-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Indicador de riesgo en la parte superior */
+.risk-indicator {
+    height: 8px; /* Altura de la barra */
+    width: 100%;
+    /* Los colores serán aplicados por las clases risk-low, risk-high, etc. */
+}
+
+/* Clases dinámicas para los colores de riesgo */
+.probability-card.risk-low .risk-indicator { background-color: var(--risk-low-color); }
+.probability-card.risk-low .probability-value { color: var(--risk-low-color); }
+
+.probability-card.risk-high .risk-indicator { background-color: var(--risk-high-color); }
+.probability-card.risk-high .probability-value { color: var(--risk-high-color); }
+
+.probability-card.risk-extreme .risk-indicator { background-color: var(--risk-extreme-color); }
+.probability-card.risk-extreme .probability-value { color: var(--risk-extreme-color); }
+
+
+.card-content {
+    padding: 25px;
+}
+
+.card-icon-wrapper {
+    background-color: #E3F2FD; /* Fondo azul muy claro para el icono */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 15px; /* Centrar y espaciar */
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2); /* Sombra sutil del icono */
+}
+
+.card-icon {
+    font-size: 2.2rem; /* Tamaño grande del ícono */
+    line-height: 1; /* Para alinear bien emojis */
+}
+
+.card-title {
+    color: var(--color-text-dark);
+    font-family: 'Roboto', sans-serif;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.probability-value {
+    font-family: 'Roboto', sans-serif;
+    font-size: 3rem; /* Tamaño gigante del porcentaje */
+    font-weight: 700;
+    margin: 10px 0;
+    line-height: 1; /* Para centrar bien */
+}
+
+.percent-sign {
+    font-size: 1.5rem; /* El signo de porcentaje más pequeño */
+    vertical-align: super; /* Arriba del número */
+}
+
+.card-details {
+    margin-top: 20px;
+    margin-bottom: 25px;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.card-details p {
+    margin: 5px 0;
+}
+
+.card-details strong {
+    color: var(--color-primary-indigo); /* Azul índigo para resaltar valores */
+    font-weight: 600;
+}
+
+.download-btn {
+    display: inline-flex; /* Para alinear icono y texto */
+    align-items: center;
+    padding: 8px 15px;
+    background-color: var(--color-primary-blue);
+    color: #FFFFFF;
+    text-decoration: none;
+    border-radius: 20px; /* Botón redondeado */
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.download-btn i {
+    margin-right: 8px; /* Espacio entre icono y texto */
+}
+
+.download-btn:hover {
+    background-color: #1976D2; /* Azul más oscuro en hover */
+}
