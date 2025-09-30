@@ -1,36 +1,42 @@
-// src/pages/HomePage.jsx
-import React, { useState } from 'react';
-// ¡Ajusta esta ruta según tu estructura de carpetas!
-import ProbabilityCard from '../components/UI/ProbabilityCard.jsx'; 
-import '../styles/HomePage.css'; // ¡Asegúrate de tener este archivo!
 
-// URL de tu API de backend
+import React, { useState } from 'react';
+import './Home.css'; 
+import ProbabilityCard from '../../components/ProbabilityCard';
 const API_URL = 'http://localhost:3000/api/probability'; 
 
+// AÑADIMOS TODAS LAS VARIABLES DEL BACKEND
 const VARIABLES = [
-    { value: 'hot', label: '🌡️ Muy Cálido' },
+    { value: 'hot', label: '☀️ Muy Cálido' },
+    { value: 'cold', label: '🥶 Muy Frío' },
     { value: 'wet', label: '🌧️ Muy Húmedo' },
     { value: 'windy', label: '💨 Muy Ventoso' },
+    { value: 'uncomfortable', label: '🥵 Muy Incómodo' },
+    { value: 'dust', label: '🌪️ Mucho Polvo' },
 ];
 
 const HomePage = () => {
     // 1. Estados de la aplicación
-    const [location, setLocation] = useState({ lat: 19.43, lon: -99.13 }); // CDMX por defecto
-    const [date, setDate] = useState({ day: 15, month: 7 }); // 15 de Julio por defecto
-    const [variable, setVariable] = useState('hot'); // Variable por defecto
-    const [results, setResults] = useState(null); // Almacena los resultados de la API
-    const [loading, setLoading] = useState(false); // Indica si una solicitud está en curso
-    const [error, setError] = useState(null); // Almacena mensajes de error
+    const [location, setLocation] = useState({ lat: 0, lon: -0 }); 
+    const [date, setDate] = useState({ day: 0, month: 0 }); 
+    const [variable, setVariable] = useState('hot'); 
+    const [results, setResults] = useState(null); 
+    const [loading, setLoading] = useState(false); 
+    const [error, setError] = useState(null);
 
-    // 2. Manejador de la Consulta a la API Real
+
     const handleSearch = async () => {
-        setLoading(true); // Activa el estado de carga
-        setError(null);    // Limpia errores anteriores
-        setResults(null);  // Limpia resultados anteriores
+        setLoading(true); 
+        setError(null);    
+        setResults(null);  
 
-        // Validación simple de los inputs
-        if (!location.lat || !location.lon || !date.day || !date.month || !variable) {
-            setError('Por favor, completa todos los campos de ubicación, fecha y selecciona una condición.');
+        // Validación de inputs
+        const validLat = !isNaN(parseFloat(location.lat));
+        const validLon = !isNaN(parseFloat(location.lon));
+        const validDay = date.day >= 1 && date.day <= 31;
+        const validMonth = date.month >= 1 && date.month <= 12;
+
+        if (!validLat || !validLon || !validDay || !validMonth || !variable) {
+            setError('🚨 Por favor, introduce Latitud/Longitud válidas y una fecha correcta (Día 1-31, Mes 1-12).');
             setLoading(false);
             return;
         }
@@ -40,35 +46,33 @@ const HomePage = () => {
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ // Envía los datos como JSON
-                    lat: location.lat,
-                    lon: location.lon,
-                    day: date.day,
-                    month: date.month,
+                body: JSON.stringify({ // Envía los datos al backend
+                    // Aseguramos que se envíen como números (aunque el backend los parsea)
+                    lat: parseFloat(location.lat), 
+                    lon: parseFloat(location.lon),
+                    day: parseInt(date.day),
+                    month: parseInt(date.month),
                     variable: variable
                 })
             });
 
-            // Verifica si la respuesta de la red fue exitosa (código 2xx)
             if (!response.ok) {
-                // Si hay un error, intenta leer el mensaje de error del servidor
                 const errorData = await response.json();
+                // El backend devuelve el error de simulación de 0,0 aquí
                 throw new Error(errorData.message || `Error del servidor: ${response.status} ${response.statusText}`);
             }
 
-            // Si la respuesta fue exitosa, parsea los datos JSON
             const data = await response.json();
-            setResults(data); // Almacena los datos en el estado
+            setResults(data); // Almacena los datos REALES del backend
 
         } catch (err) {
             console.error("Error en la consulta a la API:", err);
             setError(err.message || 'Error desconocido al conectar con el servicio de datos.');
         } finally {
-            setLoading(false); // Desactiva el estado de carga al finalizar
+            setLoading(false); 
         }
     };
 
-    // Función auxiliar para aplicar la clase 'active' a los botones de variable
     const getVariableButtonClass = (val) => 
         `variable-btn ${variable === val ? 'active' : ''}`;
 
@@ -80,7 +84,7 @@ const HomePage = () => {
                 <p>Planifica tu evento al aire libre con datos de observación terrestre de la **NASA**.</p>
             </header>
 
-            {/* --- PANEL DE CONTROL (Dos Columnas) --- */}
+            {/* --- PANEL DE CONTROL --- */}
             <div className="control-panel">
                 
                 {/* Columna 1: Inputs de Consulta */}
@@ -95,7 +99,7 @@ const HomePage = () => {
                             type="number" 
                             step="0.01" 
                             value={location.lat} 
-                            onChange={(e) => setLocation({ ...location, lat: parseFloat(e.target.value) })} 
+                            onChange={(e) => setLocation({ ...location, lat: e.target.value })} 
                         />
                         <label htmlFor="lon-input">📍 Longitud:</label>
                         <input 
@@ -103,7 +107,7 @@ const HomePage = () => {
                             type="number" 
                             step="0.01" 
                             value={location.lon} 
-                            onChange={(e) => setLocation({ ...location, lon: parseFloat(e.target.value) })} 
+                            onChange={(e) => setLocation({ ...location, lon: e.target.value })} 
                         />
                     </div>
 
@@ -116,7 +120,7 @@ const HomePage = () => {
                             min="1" 
                             max="31" 
                             value={date.day} 
-                            onChange={(e) => setDate({ ...date, day: parseInt(e.target.value) || 1 })} 
+                            onChange={(e) => setDate({ ...date, day: e.target.value })} 
                         />
                         <label htmlFor="month-input">📅 Mes (1-12):</label>
                         <input 
@@ -125,7 +129,7 @@ const HomePage = () => {
                             min="1" 
                             max="12" 
                             value={date.month} 
-                            onChange={(e) => setDate({ ...date, month: parseInt(e.target.value) || 1 })} 
+                            onChange={(e) => setDate({ ...date, month: e.target.value })} 
                         />
                     </div>
                     
@@ -149,7 +153,7 @@ const HomePage = () => {
                     <button 
                         className="btn-primary" 
                         onClick={handleSearch} 
-                        disabled={loading} // Deshabilita el botón durante la carga
+                        disabled={loading}
                     >
                         {loading ? 'Analizando Datos...' : 'Analizar Probabilidades'}
                     </button>
@@ -162,7 +166,7 @@ const HomePage = () => {
                 <div className="map-card">
                     <h3 className="map-title">Ubicación Seleccionada</h3>
                     <div className="map-placeholder">
-                        <p>📍 Latitud: {location.lat.toFixed(4)}, Longitud: {location.lon.toFixed(4)}</p>
+                        <p>📍 Latitud: {location.lat || 'N/A'}, Longitud: {location.lon || 'N/A'}</p>
                         <p className="map-note">[Aquí iría un Mapa Interactivo con el PIN]</p>
                     </div>
                 </div>
@@ -177,24 +181,30 @@ const HomePage = () => {
                     
                     <div className="results-grid">
                         {/* 1. Tarjeta de Probabilidad */}
-                        <ProbabilityCard 
+                        <ProbabilityCard
                             variable={results.variable} 
                             probability={results.probability}
                             historicalMean={results.historicalMean}
                             threshold={results.threshold}
                             unit={results.unit}
                             downloadLink={results.downloadLink}
+                            detailDescription={results.detailDescription} // Pasamos la descripción detallada
                         />
 
-                        {/* 2. Placeholder para el Gráfico de Campana/Distribución */}
+                        {/* 2. Placeholder para la Descripción y Descarga */}
                         <div className="data-visualization-card">
-                            <h3>Distribución Histórica</h3>
+                            <h3>Detalles del Análisis</h3>
+                            <p className="detail-description">{results.detailDescription}</p>
+                            
+                            <h3 style={{marginTop: '15px'}}>Visualización</h3>
                             <div className="chart-placeholder">
-                                <p>Gráfico de Campana (Bell Curve) mostrando la probabilidad de exceder el umbral ({results.threshold}{results.unit}).</p>
+                                <p>Gráfico de Distribución simulada (Campana) mostrando el umbral y el riesgo.</p>
                             </div>
+                            
+                            {/* El enlace de descarga apunta a la URL OPeNDAP real */}
                             {results.downloadLink && (
-                                <a href={results.downloadLink} className="download-link" download>
-                                    Descargar Datos Históricos (JSON) ↓
+                                <a href={results.downloadLink} target="_blank" rel="noopener noreferrer" className="download-link">
+                                    Descargar Enlace a Datos Históricos de NASA (OPeNDAP) ↓
                                 </a>
                             )}
                         </div>

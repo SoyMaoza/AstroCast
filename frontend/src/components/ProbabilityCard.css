@@ -1,6 +1,4 @@
-/* src/components/UI/ProbabilityCard.css */
 
-/* --- Colores de Riesgo (usados por la tarjeta) --- */
 :root {
     --risk-low-color: #4CAF50;    /* Verde */
     --risk-medium-color: #8BC34A; /* Verde más claro */
@@ -100,27 +98,27 @@
 }
 
 .card-details strong {
-    color: var(--color-primary-indigo); /* Azul índigo para resaltar valores */
+    color: var(--color-primary-indigo);
     font-weight: 600;
 }
 
 .download-btn {
-    display: inline-flex; /* Para alinear icono y texto */
+    display: inline-flex; 
     align-items: center;
     padding: 8px 15px;
     background-color: var(--color-primary-blue);
     color: #FFFFFF;
     text-decoration: none;
-    border-radius: 20px; /* Botón redondeado */
+    border-radius: 20px; 
     font-size: 0.9rem;
     font-weight: 500;
     transition: background-color 0.2s ease;
 }
 
 .download-btn i {
-    margin-right: 8px; /* Espacio entre icono y texto */
+    margin-right: 8px; 
 }
 
 .download-btn:hover {
-    background-color: #1976D2; /* Azul más oscuro en hover */
+    background-color: #1976D2;
 }
