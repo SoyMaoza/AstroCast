@@ -8,6 +8,7 @@ const URL_MERRA2_OPENDAP = "https://opendap.earthdata.nasa.gov/collections/C1276
 
 const URL_DUST_OPENDAP = "https://opendap.earthdata.nasa.gov/collections/C1276812830-GES_DISC/granules/M2T1NXAER.5.12.4%3AMERRA2_100.tavg1_2d_aer_Nx.19800101.nc4.dap.nc4?dap4.ce=/DUEXTTAU;/time;/lat;/lon";
 
+
 app.use(cors());
 app.use(express.json());
 
