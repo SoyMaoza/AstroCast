@@ -4,11 +4,13 @@ const axios = require("axios");
 const app = express();
 const port = 3000;
 
+
+
 const URL_MERRA2_OPENDAP =
-  "https://opendap.earthdata.nasa.gov/collections/C1276812863-GES_DISC/granules/M2T1NXSLV.5.12.4%3AMERRA2_100.tavg1_2d_slv_Nx.19800101.nc4.dap.nc4?dap4.ce=/QV2M;/T2M;/T2MDEW;/U10M;/V10M;/time;/lat;/lon";
+  "https://opendap.earthdata.nasa.gov/collections/C1276812863-GES_DISC/granules/M2T1NXSLV.5.12.4%3AMERRA2_100.tavg1_2d_slv_Nx.19800102.nc4.dap.nc4?dap4.ce=/QV2M;/T2M;/T2MDEW;/U10M;/V10M;/time;/lat;/lon";
 
 const URL_DUST_OPENDAP =
-  "https://opendap.earthdata.nasa.gov/collections/C1276812830-GES_DISC/granules/M2T1NXAER.5.12.4%3AMERRA2_100.tavg1_2d_aer_Nx.19800101.nc4.dap.nc4?dap4.ce=/DUEXTTAU;/time;/lat;/lon";
+  "https://opendap.earthdata.nasa.gov/collections/C1276812830-GES_DISC/granules/M2T1NXAER.5.12.4%3AMERRA2_100.tavg1_2d_aer_Nx.19800102.nc4.dap.nc4?dap4.ce=/DUEXTTAU;/time;/lat;/lon";
 
 
 app.use(cors());
@@ -44,7 +46,7 @@ const processNasaHistoricalData = async (lat, lon, day, month, variable) => {
   const config = CONFIG_DATOS_NASA[variable];
   if (!config)
     throw new Error(
-      `[Error Backend] Variable '${variable}' no soportada. Asegúrate de que el frontend usa las claves en español.`
+      `Seleccione todos los campos.`
     );
 
   console.log(
