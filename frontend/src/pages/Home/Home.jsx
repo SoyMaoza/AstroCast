@@ -1,7 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Home.css'; 
 import ProbabilityCard from '../../components/ProbabilityCard';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 const API_URL = 'http://localhost:3000/api/probability'; 
 
 // DESPUÉS (ESPAÑOL - Correcto)
@@ -14,15 +17,47 @@ const VARIABLES = [
     { value: 'polvo', label: '🌪️ Mucho Polvo' }, // 👈 Cambié 'dust' por 'polvo'
 ];
 
+// Corrige el problema del icono por defecto en Leaflet con Webpack/Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
+function LocationMarker({ location, setLocation }) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (location.lat !== null && location.lon !== null) {
+            map.flyTo([location.lat, location.lon], map.getZoom());
+        }
+    }, [location, map]);
+
+    useMapEvents({
+        click(e) {
+            setLocation({ lat: e.latlng.lat, lon: e.latlng.lng });
+        },
+    });
+
+    return location.lat === null ? null : (
+        <Marker position={[location.lat, location.lon]}></Marker>
+    );
+}
+
 const HomePage = () => {
     // 1. Estados de la aplicación
-    const [location, setLocation] = useState({ lat: 0, lon: -0 }); 
-    const [date, setDate] = useState({ day: 0, month: 0 }); 
+    const [location, setLocation] = useState({ lat: 19.43, lon: -99.13 }); 
+    const [date, setDate] = useState({ day: 1, month: 1 }); 
     const [variable, setVariable] = useState('hot'); 
     const [results, setResults] = useState(null); 
     const [loading, setLoading] = useState(false); 
     const [error, setError] = useState(null);
 
+    const handleLocationChange = (e) => {
+        const { name, value } = e.target;
+        setLocation(prev => ({ ...prev, [name]: value }));
+    };
 
     const handleSearch = async () => {
         setLoading(true); 
@@ -97,14 +132,16 @@ const HomePage = () => {
                         <input 
                             id="lat-input"
                             type="number" 
+                            name="lat"
                             step="0.01" 
                             value={location.lat} 
-                            onChange={(e) => setLocation({ ...location, lat: e.target.value })} 
+                            onChange={handleLocationChange} 
                         />
                         <label htmlFor="lon-input">📍 Longitud:</label>
                         <input 
                             id="lon-input"
                             type="number" 
+                            name="lon"
                             step="0.01" 
                             value={location.lon} 
                             onChange={(e) => setLocation({ ...location, lon: e.target.value })} 
@@ -165,10 +202,18 @@ const HomePage = () => {
                 {/* Columna 2: Mapa y Visualización de Ubicación */}
                 <div className="map-card">
                     <h3 className="map-title">Ubicación Seleccionada</h3>
-                    <div className="map-placeholder">
-                        <p>📍 Latitud: {location.lat || 'N/A'}, Longitud: {location.lon || 'N/A'}</p>
-                        <p className="map-note">[Aquí iría un Mapa Interactivo con el PIN]</p>
-                    </div>
+                    <MapContainer 
+                        center={[location.lat, location.lon]} 
+                        zoom={5} 
+                        scrollWheelZoom={true} 
+                        style={{ height: '100%', width: '100%', borderRadius: '8px' }}
+                    >
+                        <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <LocationMarker location={location} setLocation={setLocation} />
+                    </MapContainer>
                 </div>
             </div>
 
