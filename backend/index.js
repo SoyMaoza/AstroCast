@@ -1,17 +1,141 @@
+const mongoose = require("mongoose");
 const express = require("express");
 const cors = require("cors");
-const axios = require("axios");
 const app = express();
 const port = 3000;
+
+// MIDDLEWARES
+app.use(cors());
+app.use(express.json());
+
+// Database connection with MongoDB
+mongoose.connect("mongodb+srv://admin:QpDjnHb55FIj60Hq@cluster0.9ank8lv.mongodb.net/astrocast")
+    .then(() => console.log("Conectado a MongoDB Atlas"))
+    .catch((err) => console.error("Error al conectar a MongoDB:", err));
+
+// Schema Definition
+const ClimateDaySchema = new mongoose.Schema({
+    day: { type: Number, required: true },
+    month: { type: Number, required: true },
+    lat: { type: Number, required: true },
+    lon: { type: Number, required: true },
+    variable: { type: String, required: true, enum: [ "calido", "frio", "humedo", "ventoso", "incomodo", "polvo" ]},
+    probability: { type: Number, required: true },
+    historicalMean: { type: Number, required: true },
+    threshold: { type: Number, required: true },
+    unit: { type: String, required: true },
+    detailDescription: { type: String },
+    downloadLink: { type: String },
+}, { timestamps: true });
+
+ClimateDaySchema.index({ day: 1, month: 1, variable: 1, lat: 1, lon: 1 });
+
+// Model Definition
+const ClimateDay = mongoose.model("ClimateDay", ClimateDaySchema); // <-- CORREGIDO: Definición del modelo
+
+// API Routes
+app.get("/", (req, res) => {
+    res.send("Express app is running");
+});
+
+app.post('/addinfo', async (req, res) => {
+    try {
+        const newClimateDay = new ClimateDay({
+            day: req.body.day,
+            month: req.body.month,
+            lat: req.body.lat,
+            lon: req.body.lon,
+            variable: req.body.variable,
+            probability: req.body.probability,
+            historicalMean: req.body.historicalMean,
+            threshold: req.body.threshold,
+            unit: req.body.unit,
+            detailDescription: req.body.detailDescription,
+            downloadLink: req.body.downloadLink,
+        });
+
+        await newClimateDay.save();
+        console.log("Guardado exitosamente");
+        res.status(201).json({
+            success: true,
+            data: newClimateDay
+        });
+
+    } catch (error) {
+        console.error("Error al guardar:", error);
+        res.status(500).json({ success: false, message: "Error interno del servidor" });
+    }
+});
+
+// Creating API for deleting climate day info
+app.delete('/deleteinfo', async (req, res) => {
+    try {
+        const deletedClimateDay = await ClimateDay.findOneAndDelete({ _id: req.body.id });
+        if (!deletedClimateDay) {
+            return res.status(404).json({ success: false, message: "No se encontró el registro" });
+        }
+        console.log("Eliminado exitosamente");
+        res.json({
+            success: true,
+            message: "Registro eliminado",
+            deletedData: deletedClimateDay
+        });
+    } catch (error) {
+        console.error("Error al eliminar:", error);
+        res.status(500).json({ success: false, message: "Error interno del servidor" });
+    }
+});
+
+// Creating API for getting all products
+app.get('/getinfo', async (req, res) => {
+    try {
+        let climateDays = await ClimateDay.find({});
+        console.log("Todos los registros obtenidos");
+        res.send(climateDays);
+    } catch (error) {
+        console.error("Error al obtener los datos:", error);
+        res.status(500).json({ success: false, message: "Error interno del servidor" });
+    }
+});
+
+// API para obtener la información de un solo registro por su ID
+app.get('/getinfo/:id', async (req, res) => {
+    try {
+        const recordId = req.params.id;
+        const climateDay = await ClimateDay.findById(recordId);
+        if (!climateDay) {
+            return res.status(404).json({ success: false, message: "Registro no encontrado" });
+        }
+        res.json({ success: true, data: climateDay });
+        console.log("Registro obtenido exitosamente");
+    } catch (error) {
+        console.error("Error al obtener el registro:", error);
+        res.status(500).json({ success: false, message: "Error interno del servidor" });
+    }
+});
+
+// API para obtener todos los registros de una fecha específica (todos los años)
+app.get('/getinfo/:month/:day', async (req, res) => {
+    try {
+        const monthParam = req.params.month;
+        const dayParam = req.params.day;
+        const climateDays = await ClimateDay.find({
+            month: monthParam,
+            day: dayParam
+        });
+        console.log(`Búsqueda para fecha ${dayParam}/${monthParam} devolvió ${climateDays.length} registros.`);
+        res.json({ success: true, data: climateDays });
+    } catch (error) {
+        console.error("Error al buscar por fecha:", error);
+        res.status(500).json({ success: false, message: "Error interno del servidor" });
+    }
+});
 
 const URL_MERRA2_OPENDAP =
   "https://opendap.earthdata.nasa.gov/collections/C1276812863-GES_DISC/granules/M2T1NXSLV.5.12.4%3AMERRA2_100.tavg1_2d_slv_Nx.19800101.nc4.dap.nc4?dap4.ce=/QV2M;/T2M;/T2MDEW;/U10M;/V10M;/time;/lat;/lon";
 
 const URL_DUST_OPENDAP =
   "https://opendap.earthdata.nasa.gov/collections/C1276812830-GES_DISC/granules/M2T1NXAER.5.12.4%3AMERRA2_100.tavg1_2d_aer_Nx.19800101.nc4.dap.nc4?dap4.ce=/DUEXTTAU;/time;/lat;/lon";
-
-app.use(cors());
-app.use(express.json());
 
 const CONFIG_DATOS_NASA = {
   calido: { variableName: "T2M", units: "K", apiUrl: URL_MERRA2_OPENDAP },
@@ -49,7 +173,7 @@ const processNasaHistoricalData = async (lat, lon, day, month, variable) => {
   console.log(
     `\n[Backend] Solicitud para: ${variable}. Fuente conceptual: ${config.apiUrl}`
   );
-  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 1500)); // Simula latencia de red
 
   let historicalMean,
     threshold,
@@ -160,7 +284,7 @@ const processNasaHistoricalData = async (lat, lon, day, month, variable) => {
       );
   }
 
-  return {
+  const result = {
     success: true,
     location: locationName,
     date: `${day}/${month}`,
@@ -172,6 +296,29 @@ const processNasaHistoricalData = async (lat, lon, day, month, variable) => {
     downloadLink: config.apiUrl,
     detailDescription: detailDescription,
   };
+
+  // Guardar el resultado en la base de datos (sin bloquear la respuesta al cliente)
+  try {
+    const newClimateRecord = new ClimateDay({
+      day: dayNum,
+      month: monthNum,
+      lat: latNum,
+      lon: lonNum,
+      variable: variable,
+      probability: result.probability,
+      historicalMean: result.historicalMean,
+      threshold: result.threshold,
+      unit: result.unit,
+      detailDescription: result.detailDescription,
+      downloadLink: result.downloadLink,
+    });
+    await newClimateRecord.save();
+    console.log(`[DB] Registro guardado para ${variable} en ${latNum},${lonNum}`);
+  } catch (dbError) {
+    console.error("[DB] Error al guardar el registro:", dbError.message);
+  }
+
+  return result;
 };
 
 app.post("/api/probability", async (req, res) => {
@@ -204,10 +351,10 @@ app.post("/api/probability", async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(
-    `\n🚀 Servidor de API de la NASA (Hackathon Mock) corrienado en http://localhost:${port}`
-  );
-  console.log(
-    `\n¡plebes, no olviden ejecutar 'npm run dev' en otra terminal para el frontend!\n`
-  );
-});
+    console.log(
+      `\n🚀 Servidor de API de AstroCast (Mock) corriendo en http://localhost:${port}`
+    );
+    console.log(
+      `\n¡No olvides ejecutar 'npm run dev' en otra terminal para el frontend!\n`
+    );
+  });
