@@ -7,14 +7,14 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 const API_URL = 'http://localhost:3000/api/probability'; 
 
-// AÑADIMOS TODAS LAS VARIABLES DEL BACKEND
+// DESPUÉS (ESPAÑOL - Correcto)
 const VARIABLES = [
-    { value: 'hot', label: '☀️ Muy Cálido' },
-    { value: 'cold', label: '🥶 Muy Frío' },
-    { value: 'wet', label: '🌧️ Muy Húmedo' },
-    { value: 'windy', label: '💨 Muy Ventoso' },
-    { value: 'uncomfortable', label: '🥵 Muy Incómodo' },
-    { value: 'dust', label: '🌪️ Mucho Polvo' },
+    { value: 'calido', label: '☀️ Muy Cálido' },
+    { value: 'frio', label: '🥶 Muy Frío' },
+    { value: 'humedo', label: '🌧️ Muy Húmedo' }, // 👈 Cambié 'wet' por 'humedo'
+    { value: 'ventoso', label: '💨 Muy Ventoso' }, // 👈 Cambié 'windy' por 'ventoso'
+    { value: 'incomodo', label: '🥵 Muy Incómodo' }, // 👈 Cambié 'uncomfortable' por 'incomodo'
+    { value: 'polvo', label: '🌪️ Mucho Polvo' }, // 👈 Cambié 'dust' por 'polvo'
 ];
 
 // Corrige el problema del icono por defecto en Leaflet con Webpack/Vite
