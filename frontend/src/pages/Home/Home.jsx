@@ -62,8 +62,16 @@ const HomePage = () => {
 
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        // Limita la entrada a un máximo de 2 dígitos.
-        setDate(prev => ({ ...prev, [name]: value.slice(0, 2) }));
+        // Limita la entrada a un máximo de 2 dígitos y elimina los puntos.
+        const sanitizedValue = value.replace(/\./g, '');
+        setDate(prev => ({ ...prev, [name]: sanitizedValue.slice(0, 2) }));
+    };
+
+    const handleDateKeyDown = (e) => {
+        // Previene la escritura de caracteres no deseados (punto, 'e') en los campos de fecha.
+        if (e.key === '.' || e.key === 'e' || e.key === 'E') {
+            e.preventDefault();
+        }
     };
 
     const validateDate = (day, month) => {
@@ -179,7 +187,8 @@ const HomePage = () => {
                             min="1" 
                             max="31" 
                             value={date.day} 
-                            onChange={handleDateChange} 
+                            onChange={handleDateChange}
+                            onKeyDown={handleDateKeyDown} 
                         />
                         <label htmlFor="month-input">📅 Mes (1-12):</label>
                         <input 
@@ -189,7 +198,8 @@ const HomePage = () => {
                             min="1" 
                             max="12" 
                             value={date.month} 
-                            onChange={handleDateChange} 
+                            onChange={handleDateChange}
+                            onKeyDown={handleDateKeyDown} 
                         />
                     </div>
                     
