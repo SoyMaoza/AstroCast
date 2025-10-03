@@ -1,5 +1,9 @@
 const mongoose = require("mongoose");
 const express = require("express");
+const fetch = require("node-fetch");
+const { Reader } = require("netcdfjs");
+const path = require('path');
+const { format, addDays, getDayOfYear } = require('date-fns');
 const cors = require("cors");
 const app = express();
 const port = 3000;
@@ -12,6 +16,11 @@ app.use(express.json());
 mongoose.connect("mongodb+srv://admin:QpDjnHb55FIj60Hq@cluster0.9ank8lv.mongodb.net/astrocast")
     .then(() => console.log("Conectado a MongoDB Atlas"))
     .catch((err) => console.error("Error al conectar a MongoDB:", err));
+
+// --- CONFIGURACIÓN ---
+const NASA_API_TOKEN = process.env.NASA_API_TOKEN || 'eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6ImFicmFoYW03NCIsImV4cCI6MTc2NDM3NDM5OSwiaWF0IjoxNzU5MTgwNzM0LCJpc3MiOiJodHRwczovL3Vycy5lYXJ0aGRhdGEubmFzYS5nb3YiLCJpZGVudGl0eV9wcm92aWRlciI6ImVkbF9vcHMiLCJhY3IiOiJlZGwiLCJhc3N1cmFuY2VfbGV2ZWwiOjN9.JtX-hH_NucBgkPjjyViTxxMLlORbVIEjGLlAeGGPGBKoNG6rqzvg4n5vH3yCDH5RzPhVmrlGRPImOPXFq5l8Gz1ITrfijple8ZA5AAasKqLBb_ekdyWSXCB9O4pIQRmetJimSi4n9rwUyNF9tOrJ8-TvcjCA23kWUNTGRnqneBmoVfbpup7rxifLoUScBb2wXLtmjJFTP8rSY0iVY64n6HLRBJUgESefj64hSvt50xODAg3ayX_g1BwioG2otGmuqcFt7qV0k5EfEJJd2bGtbQD-LocTAwUaG_Wq0XFYN2QQw1LBOMm4q94DdI2Va1XzMO6RfBBEIFZvuoclNTvjZw'; // Usa variables de entorno en producción
+const ANIO_INICIO_HISTORICO = 1980;
+const ANIO_FIN_HISTORICO = 2023; // Usar un año completo reciente
 
 // Schema Definition
 const ClimateDaySchema = new mongoose.Schema({
@@ -134,215 +143,240 @@ app.get('/getinfo/:month/:day', async (req, res) => {
 const URL_MERRA2_OPENDAP =
   "https://opendap.earthdata.nasa.gov/collections/C1276812863-GES_DISC/granules/M2T1NXSLV.5.12.4%3AMERRA2_100.tavg1_2d_slv_Nx.19800101.nc4.dap.nc4?dap4.ce=/QV2M;/T2M;/T2MDEW;/U10M;/V10M;/time;/lat;/lon";
 
-const URL_DUST_OPENDAP =
-  "https://opendap.earthdata.nasa.gov/collections/C1276812830-GES_DISC/granules/M2T1NXAER.5.12.4%3AMERRA2_100.tavg1_2d_aer_Nx.19800101.nc4.dap.nc4?dap4.ce=/DUEXTTAU;/time;/lat;/lon";
+const nasaSchema = new mongoose.Schema({
+  variable: String,
+  fecha: String, // formato dd/mm
+  lat: Number,
+  lon: Number,
+  promedio: Number,
+  unidad: String,
+  linkDescarga: String,
+  creadoEn: { type: Date, default: Date.now },
+});
 
+const NasaData = mongoose.model("NasaData", nasaSchema);
+
+// --------------------
+// 🔹 Config NASA
+// --------------------
+const URL_MERRA2 =
+  "https://opendap.earthdata.nasa.gov/collections/C1276812863-GES_DISC/granules";
+const URL_DUST =
+  "https://opendap.earthdata.nasa.gov/collections/C1276812830-GES_DISC/granules";
+
+// CORREGIDO: Se unificaron las dos declaraciones de CONFIG_DATOS_NASA en una sola y se corrigieron las URLs.
 const CONFIG_DATOS_NASA = {
-  calido: { variableName: "T2M", units: "K", apiUrl: URL_MERRA2_OPENDAP },
-  frio: { variableName: "T2M", units: "K", apiUrl: URL_MERRA2_OPENDAP },
+  calido: { variableName: "T2M", units: "K", apiUrl: URL_MERRA2 },
+  frio: { variableName: "T2M", units: "K", apiUrl: URL_MERRA2 },
   ventoso: {
     variableName: "U10M_V10M",
     units: "m/s",
-    apiUrl: URL_MERRA2_OPENDAP,
+    apiUrl: URL_MERRA2,
   },
   incomodo: {
     variableName: "T2M_T2MDEW_QV2M",
     units: "Índice (Combinado)",
-    apiUrl: URL_MERRA2_OPENDAP,
-  },
-  humedo: {
-    variableName: "precipitation",
-    units: "mm/hr",
-    apiUrl:
-      "https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGHHL.06/2024/09/3B-HHR.MS.MRG.3IMERGHHL.20240924-S100000-E102959.0600.V06A.HDF5",
+    apiUrl: URL_MERRA2,
   },
   polvo: {
     variableName: "DUEXTTAU",
     units: "AOD",
-    apiUrl: URL_DUST_OPENDAP,
+    apiUrl: URL_DUST,
   },
 };
 
-const processNasaHistoricalData = async (lat, lon, day, month, variable) => {
-  const config = CONFIG_DATOS_NASA[variable];
-  if (!config)
-    throw new Error(
-      `[Error Backend] Variable '${variable}' no soportada. Asegúrate de que el frontend usa las claves en español.`
-    );
+// --- NUEVOS MODELOS DE DATOS PARA PROCESAMIENTO ---
 
-  console.log(
-    `\n[Backend] Solicitud para: ${variable}. Fuente conceptual: ${config.apiUrl}`
-  );
-  await new Promise((resolve) => setTimeout(resolve, 1500)); // Simula latencia de red
+const historicalAverageSchema = new mongoose.Schema({
+    lat: { type: Number, required: true },
+    lon: { type: Number, required: true },
+    dayOfYear: { type: Number, required: true }, // 1-366
+    averages: {
+        temperature: { type: Number }, // T2M en Kelvin
+        windSpeed: { type: Number },   // U10M, V10M en m/s
+    },
+    yearsProcessed: { type: [Number] }
+}, { timestamps: true });
 
-  let historicalMean,
-    threshold,
-    probability,
-    locationName,
-    detailDescription = "";
-  const latNum = parseFloat(lat);
-  const lonNum = parseFloat(lon);
-  const monthNum = parseInt(month);
-  const dayNum = parseInt(day);
+historicalAverageSchema.index({ lat: 1, lon: 1, dayOfYear: 1 }, { unique: true });
+const HistoricalAverage = mongoose.model("HistoricalAverage", historicalAverageSchema);
 
-  locationName = `NASA Data Point (Lat: ${latNum.toFixed(
-    2
-  )}, Lon: ${lonNum.toFixed(2)})`;
-  if (latNum > 15 && latNum < 25 && lonNum < -105 && lonNum > -115)
-    locationName = "Centro de México (Simulado)";
+const processingStateSchema = new mongoose.Schema({
+    lat: { type: Number, required: true },
+    lon: { type: Number, required: true },
+    lastProcessedYear: { type: Number, required: true },
+    accumulators: { type: Map, of: { sum: Number, count: Number } } // "dayOfYear-variable" -> {sum, count}
+});
+const ProcessingState = mongoose.model("ProcessingState", processingStateSchema);
 
-  switch (variable) {
-    case "calido":
-      historicalMean =
-        290.0 +
-        (latNum > 0 && monthNum >= 6 && monthNum <= 8 ? 10.0 : 0.0) +
-        (Math.abs(latNum) / 90) * 10;
-      threshold = 305.0;
-      probability = Math.min(
-        Math.round(Math.max(0, (historicalMean - (threshold - 20)) * 5)),
-        95
-      );
-      detailDescription = `Basado en T2M. Probabilidad de que la temperatura histórica promedio haya excedido ${threshold.toFixed(
-        1
-      )}K.`;
-      break;
+// --- LÓGICA DE PROCESAMIENTO HISTÓRICO ---
 
-    case "frio":
-      historicalMean =
-        285.0 -
-        (latNum > 0 && (monthNum >= 11 || monthNum <= 2) ? 15.0 : 0.0) -
-        (Math.abs(latNum) / 90) * 15;
-      threshold = 273.15;
-      probability = Math.min(
-        Math.round(Math.max(0, (threshold + 10 - historicalMean) * 5)),
-        95
-      );
-      detailDescription = `Basado en T2M. Probabilidad de que la temperatura histórica promedio haya sido inferior a ${threshold.toFixed(
-        1
-      )}K.`;
-      break;
+/**
+ * Orquesta la obtención de datos. Si ya están cacheados, los devuelve.
+ * Si no, inicia el proceso de cálculo en segundo plano.
+ */
+async function processNasaHistoricalData(lat, lon, day, month, variable) {
+    const date = new Date(2023, month - 1, day); // Año no bisiesto para obtener dayOfYear
+    const dayOfYear = getDayOfYear(date);
 
-    case "humedo":
-      historicalMean = 0.1 + (monthNum >= 6 && monthNum <= 9 ? 0.4 : 0.0);
-      threshold = 0.8;
-      probability = Math.min(
-        Math.round(Math.max(0, (historicalMean - (threshold - 0.5)) * 100)),
-        80
-      );
-      detailDescription = `Basado en precipitación IMERG. Probabilidad de que la precipitación promedio histórica haya excedido ${threshold.toFixed(
-        1
-      )}mm/hr.`;
-      break;
+    const cachedData = await HistoricalAverage.findOne({ lat, lon, dayOfYear });
 
-    case "ventoso":
-      historicalMean =
-        7.0 +
-        (Math.abs(latNum) / 90) * 3 +
-        (monthNum >= 10 || monthNum <= 3 ? 2.0 : 0.0);
-      threshold = 10.0;
-      probability = Math.min(
-        Math.round(Math.max(0, (historicalMean - (threshold - 5)) * 10)),
-        60
-      );
-      detailDescription = `Basado en U10M y V10M. Probabilidad de que la velocidad del viento histórica promedio haya excedido ${threshold.toFixed(
-        1
-      )}m/s.`;
-      break;
+    if (cachedData) {
+        console.log(`[Cache] Datos encontrados para ${lat},${lon} en el día ${dayOfYear}`);
+        // Aquí transformarías el dato cacheado al formato de respuesta esperado
+        // Por ahora, devolvemos un mensaje simple.
+        return {
+            success: true,
+            location: `Lat: ${lat}, Lon: ${lon}`,
+            date: `${day}/${month}`,
+            variable,
+            probability: 50, // Calcular probabilidad basada en el promedio
+            historicalMean: cachedData.averages.temperature, // Ejemplo
+            threshold: 305,
+            unit: "K",
+            detailDescription: `Promedio histórico de ${cachedData.yearsProcessed.length} años.`,
+        };
+    }
 
-    case "incomodo":
-      historicalMean =
-        290.0 +
-        (latNum > 0 && monthNum >= 6 && monthNum <= 8 ? 8.0 : 0.0) +
-        (Math.abs(latNum) / 90) * 5;
-      threshold = 308.0;
-      probability = Math.min(
-        Math.round(Math.max(0, (historicalMean - (threshold - 10)) * 5)),
-        98
-      );
-      detailDescription = `Basado en T2M y Dew Point Temp para un índice de incomodidad. Probabilidad de que el índice de incomodidad histórica promedio haya excedido ${threshold.toFixed(
-        1
-      )}.`;
-      break;
-
-    case "polvo":
-      historicalMean =
-        0.05 +
-        (Math.abs(latNum) < 30 && monthNum >= 3 && monthNum <= 5 ? 0.2 : 0.0);
-      threshold = 0.5;
-      probability = Math.min(
-        Math.round(Math.max(0, (historicalMean - (threshold - 0.3)) * 100)),
-        40
-      );
-      detailDescription = `Basado en AOD. Probabilidad de que la concentración de polvo histórica promedio haya excedido ${threshold.toFixed(
-        2
-      )} AOD.`;
-      break;
-
-    default:
-      throw new Error(
-        "Variable climática no reconocida para el procesamiento."
-      );
-  }
-
-  const result = {
-    success: true,
-    location: locationName,
-    date: `${day}/${month}`,
-    variable: variable,
-    probability: probability,
-    historicalMean: parseFloat(historicalMean.toFixed(2)),
-    threshold: parseFloat(threshold.toFixed(2)),
-    unit: config.units,
-    downloadLink: config.apiUrl,
-    detailDescription: detailDescription,
-  };
-
-  // Guardar el resultado en la base de datos (sin bloquear la respuesta al cliente)
-  try {
-    const newClimateRecord = new ClimateDay({
-      day: dayNum,
-      month: monthNum,
-      lat: latNum,
-      lon: lonNum,
-      variable: variable,
-      probability: result.probability,
-      historicalMean: result.historicalMean,
-      threshold: result.threshold,
-      unit: result.unit,
-      detailDescription: result.detailDescription,
-      downloadLink: result.downloadLink,
+    console.log(`[Cache] No hay datos para ${lat},${lon} día ${dayOfYear}. Iniciando cálculo.`);
+    // Inicia el cálculo en segundo plano sin esperar a que termine (fire and forget)
+    calculateAndStoreHistoricalAverages(lat, lon).catch(err => {
+        console.error(`[ERROR] Falló el cálculo en segundo plano para ${lat},${lon}:`, err);
     });
-    await newClimateRecord.save();
-    console.log(`[DB] Registro guardado para ${variable} en ${latNum},${lonNum}`);
-  } catch (dbError) {
-    console.error("[DB] Error al guardar el registro:", dbError.message);
-  }
 
-  return result;
-};
+    // Devuelve una respuesta inmediata al usuario
+    return {
+        success: false,
+        message: "Los datos históricos para esta ubicación no estaban pre-calculados. Se ha iniciado el proceso. Por favor, intente de nuevo en unos minutos.",
+        reprocessing: true,
+    };
+}
 
+/**
+ * Procesa el rango de años completo para una ubicación, guardando el progreso.
+ */
+async function calculateAndStoreHistoricalAverages(lat, lon) {
+    const state = await ProcessingState.findOne({ lat, lon }) || { accumulators: new Map() };
+    const startYear = state.lastProcessedYear ? state.lastProcessedYear + 1 : ANIO_INICIO_HISTORICO;
+
+    console.log(`[Procesando] Ubicación ${lat},${lon} desde el año ${startYear}`);
+
+    for (let year = startYear; year <= ANIO_FIN_HISTORICO; year++) {
+        let currentDate = new Date(year, 0, 1);
+        while (currentDate.getFullYear() === year) {
+            const dayOfYear = getDayOfYear(currentDate);
+            const fechaStr = format(currentDate, 'yyyyMMdd');
+
+            try {
+                const values = await fetchAndProcessGranule(fechaStr, lat, lon);
+                if (values) {
+                    // Acumular temperatura
+                    let tempKey = `${dayOfYear}-temperature`;
+                    let tempAcc = state.accumulators.get(tempKey) || { sum: 0, count: 0 };
+                    tempAcc.sum += values.temperature;
+                    tempAcc.count++;
+                    state.accumulators.set(tempKey, tempAcc);
+                }
+            } catch (e) {
+                console.warn(`No se pudo procesar ${fechaStr}: ${e.message}`);
+            }
+            currentDate = addDays(currentDate, 1);
+        }
+
+        // Guardar progreso parcial cada 5 años
+        if (year % 5 === 0 || year === ANIO_FIN_HISTORICO) {
+            console.log(`[Checkpoint] Guardando progreso para el año ${year}...`);
+            await ProcessingState.updateOne(
+                { lat, lon },
+                { lastProcessedYear: year, accumulators: state.accumulators },
+                { upsert: true }
+            );
+        }
+    }
+
+    // Guardado final de promedios
+    console.log("[Finalizando] Calculando y guardando promedios finales...");
+    for (const [key, { sum, count }] of state.accumulators.entries()) {
+        const [dayOfYear, variable] = key.split('-');
+        const average = sum / count;
+
+        await HistoricalAverage.updateOne(
+            { lat, lon, dayOfYear: parseInt(dayOfYear) },
+            {
+                $set: { [`averages.${variable}`]: average },
+                $addToSet: { yearsProcessed: { $each: Array.from({ length: ANIO_FIN_HISTORICO - ANIO_INICIO_HISTORICO + 1 }, (_, i) => ANIO_INICIO_HISTORICO + i) } }
+            },
+            { upsert: true }
+        );
+    }
+    await ProcessingState.deleteOne({ lat, lon }); // Limpiar estado temporal
+    console.log(`[Completado] Proceso finalizado para ${lat},${lon}.`);
+}
+
+/**
+ * Descarga y extrae valores de un solo archivo NetCDF de MERRA-2.
+ */
+async function fetchAndProcessGranule(fecha, lat, lon) {
+    const url = `https://goldsmr4.gesdisc.eosdis.nasa.gov/data/MERRA2/M2T1NXSLV.5.12.4/${fecha.substring(0, 4)}/${fecha.substring(4, 6)}/MERRA2_400.tavg1_2d_slv_Nx.${fecha}.nc4`;
+
+    const resp = await fetch(url, { headers: { "Authorization": `Bearer ${NASA_API_TOKEN}` } });
+    if (!resp.ok) throw new Error(`Fallo en la descarga del gránulo ${url}: ${resp.statusText}`);
+
+    const buffer = await resp.arrayBuffer();
+    const reader = new Reader(buffer);
+
+    const lats = reader.getDataVariable('lat');
+    const lons = reader.getDataVariable('lon');
+    const { latIndex, lonIndex } = findNearestGridIndex(lats, lons, lat, lon);
+
+    // Extraer temperatura (T2M) y promediarla para el día
+    const T2M = reader.getDataVariable('T2M'); // Shape: [time, lat, lon]
+    let tempSum = 0;
+    const timeSteps = reader.variables.find(v => v.name === 'T2M').dimensions[0].length;
+
+    for (let t = 0; t < timeSteps; t++) {
+        tempSum += T2M[t * lats.length * lons.length + latIndex * lons.length + lonIndex];
+    }
+    const avgTemp = tempSum / timeSteps;
+
+    return {
+        temperature: avgTemp, // en Kelvin
+        // Aquí podrías añadir viento, etc.
+    };
+}
+
+function findNearestGridIndex(lats, lons, targetLat, targetLon) {
+    let latIndex = 0, lonIndex = 0;
+    let minDistLat = Infinity, minDistLon = Infinity;
+
+    lats.forEach((lat, i) => {
+        const dist = Math.abs(lat - targetLat);
+        if (dist < minDistLat) {
+            minDistLat = dist;
+            latIndex = i;
+        }
+    });
+    lons.forEach((lon, i) => {
+        const dist = Math.abs(lon - targetLon);
+        if (dist < minDistLon) {
+            minDistLon = dist;
+            lonIndex = i;
+        }
+    });
+    return { latIndex, lonIndex };
+}
+
+// --------------------
+// 🔹 API Endpoint
+// --------------------
 app.post("/api/probability", async (req, res) => {
   const { lat, lon, day, month, variable } = req.body;
 
-  if (parseFloat(lat) === 0 && parseFloat(lon) === 0) {
-    return res.status(503).json({
-      success: false,
-      message:
-        "Error de Servicio NASA: El servicio de datos no responde para esta región (Simulación de fallo).",
-    });
-  }
-
   try {
-    const results = await processNasaHistoricalData(
-      lat,
-      lon,
-      day,
-      month,
-      variable
-    );
-    res.json(results);
+    const result = await processNasaHistoricalData(parseFloat(lat), parseFloat(lon), parseInt(day), parseInt(month), variable);
+    res.json(result); // 🔹 Se envía al frontend la media y demás info
   } catch (error) {
-    console.error("Error en el cálculo del backend:", error);
+    console.error("❌ Error en backend:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Error interno al procesar datos históricos.",
@@ -350,9 +384,21 @@ app.post("/api/probability", async (req, res) => {
   }
 });
 
+// --------------------
+// 🔹 Endpoint para consultar datos ya guardados
+// --------------------
+app.get("/api/data", async (req, res) => {
+  try {
+    const datos = await NasaData.find().sort({ creadoEn: -1 }).limit(50);
+    res.json(datos);
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error consultando MongoDB." });
+  }
+});
+
 app.listen(port, () => {
     console.log(
-      `\n🚀 Servidor de API de AstroCast (Mock) corriendo en http://localhost:${port}`
+      `\n🚀 Servidor de API de AstroCast corriendo en http://localhost:${port}`
     );
     console.log(
       `\n¡No olvides ejecutar 'npm run dev' en otra terminal para el frontend!\n`

@@ -14,8 +14,11 @@
     "axios": "^1.12.2",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
     "express": "^5.1.0",
-    "mongoose": "^8.18.3"
+    "mongoose": "^8.18.3",
+    "netcdfjs": "^3.0.0",
+    "node-fetch": "^2.7.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
