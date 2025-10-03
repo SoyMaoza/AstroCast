@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import './Home.css'; 
 import ProbabilityCard from '../../components/ProbabilityCard';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import DistributionChart from '../../components/DistributionChart'; // <-- 1. Importar el nuevo componente
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 const API_URL = 'http://localhost:3000/api/probability'; 
@@ -10,7 +11,7 @@ const API_URL = 'http://localhost:3000/api/probability';
 // DESPUÉS (ESPAÑOL - Correcto)
 const VARIABLES = [
     { value: 'calido', label: '☀️ Muy Cálido' },
-    { value: 'frio', label: '🥶 Muy Frío' },
+    { value: 'frio', label: '🥶 Muy Frío' }, // 👈 Cambié 'cold' por 'frio'
     { value: 'humedo', label: '🌧️ Muy Húmedo' }, // 👈 Cambié 'wet' por 'humedo'
     { value: 'ventoso', label: '💨 Muy Ventoso' }, // 👈 Cambié 'windy' por 'ventoso'
     { value: 'incomodo', label: '🥵 Muy Incómodo' }, // 👈 Cambié 'uncomfortable' por 'incomodo'
@@ -49,7 +50,7 @@ const HomePage = () => {
     // 1. Estados de la aplicación
     const [location, setLocation] = useState({ lat: 19.43, lon: -99.13 }); 
     const [date, setDate] = useState({ day: 1, month: 1 }); 
-    const [variable, setVariable] = useState('hot'); 
+    const [variable, setVariable] = useState('calido'); 
     const [results, setResults] = useState(null); 
     const [loading, setLoading] = useState(false); 
     const [error, setError] = useState(null);
@@ -242,9 +243,12 @@ const HomePage = () => {
                             <p className="detail-description">{results.detailDescription}</p>
                             
                             <h3 style={{marginTop: '15px'}}>Visualización</h3>
-                            <div className="chart-placeholder">
-                                <p>Gráfico de Distribución simulada (Campana) mostrando el umbral y el riesgo.</p>
-                            </div>
+                            {/* 2. Reemplazar el placeholder con el componente del gráfico */}
+                            <DistributionChart 
+                                mean={results.historicalMean}
+                                threshold={results.threshold}
+                                unit={results.unit}
+                            />
                             
                             {/* El enlace de descarga apunta a la URL OPeNDAP real */}
                             {results.downloadLink && (
