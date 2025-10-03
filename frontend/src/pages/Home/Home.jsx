@@ -3,20 +3,20 @@ import './Home.css';
 import ProbabilityCard from '../../components/ProbabilityCard';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import DistributionChart from '../../components/DistributionChart';
-import Chatbox from '../../components/Chatbox'; // <-- 1. Importar el nuevo componente de chat
+import Chatbox from '../../components/Chatbox';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-const API_URL = 'http://localhost:3000/api/probability'; 
+const API_URL = 'http://localhost:3000/api/climate-probability';
 
 // Variables climáticas
 const VARIABLES = [
     { value: 'calido', label: '☀️ Muy Cálido' },
-    { value: 'frio', label: '🥶 Muy Frío' }, // 👈 Cambié 'cold' por 'frio'
-    { value: 'humedo', label: '🌧️ Muy Húmedo' }, // 👈 Cambié 'wet' por 'humedo'
-    { value: 'ventoso', label: '💨 Muy Ventoso' }, // 👈 Cambié 'windy' por 'ventoso'
-    { value: 'incomodo', label: '🥵 Muy Incómodo' }, // 👈 Cambié 'uncomfortable' por 'incomodo'
-    { value: 'polvo', label: '🌪️ Mucho Polvo' }, // 👈 Cambié 'dust' por 'polvo'
+    { value: 'frio', label: '🥶 Muy Frío' },
+    { value: 'humedo', label: '🌧️ Muy Húmedo' },
+    { value: 'ventoso', label: '💨 Muy Ventoso' },
+    { value: 'incomodo', label: '🥵 Muy Incómodo' },
+    { value: 'polvo', label: '🌪️ Mucho Polvo' },
 ];
 
 // Fix icono default Leaflet
@@ -61,18 +61,43 @@ const HomePage = () => {
         setLocation(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleDateChange = (e) => {
+        const { name, value } = e.target;
+        const sanitizedValue = value.replace(/\./g, '');
+        setDate(prev => ({ ...prev, [name]: sanitizedValue.slice(0, 2) }));
+    };
+
+    const handleDateKeyDown = (e) => {
+        if (e.key === '.' || e.key === 'e' || e.key === 'E') {
+            e.preventDefault();
+        }
+    };
+
+    const validateDate = (day, month) => {
+        const dayNum = parseInt(day, 10);
+        const monthNum = parseInt(month, 10);
+
+        if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || monthNum < 1) {
+            return 'El día y el mes deben ser números válidos.';
+        }
+        if (monthNum > 12) {
+            return 'El mes no puede ser mayor que 12.';
+        }
+        const daysInMonth = new Date(2024, monthNum, 0).getDate();
+        if (dayNum > daysInMonth) {
+            return `El mes ${monthNum} solo tiene ${daysInMonth} días.`;
+        }
+        return null;
+    };
+
     const handleSearch = async () => {
         setLoading(true); 
         setError(null);    
         setResults(null);  
 
-        const validLat = !isNaN(parseFloat(location.lat));
-        const validLon = !isNaN(parseFloat(location.lon));
-        const validDay = date.day >= 1 && date.day <= 31;
-        const validMonth = date.month >= 1 && date.month <= 12;
-
-        if (!validLat || !validLon || !validDay || !validMonth || !variable) {
-            setError('🚨 Por favor, introduce Latitud/Longitud válidas y una fecha correcta (Día 1-31, Mes 1-12).');
+        const dateError = validateDate(date.day, date.month);
+        if (dateError) {
+            setError(`Error en la fecha: ${dateError}`);
             setLoading(false);
             return;
         }
@@ -143,17 +168,25 @@ const HomePage = () => {
                     <div className="input-group">
                         <label>📅 Día:</label>
                         <input 
-                            type="number" 
-                            min="1" max="31"
-                            value={date.day}
-                            onChange={(e) => setDate({ ...date, day: e.target.value })}
+                            id="day-input"
+                            type="number"
+                            name="day"
+                            min="1" 
+                            max="31" 
+                            value={date.day} 
+                            onChange={handleDateChange}
+                            onKeyDown={handleDateKeyDown} 
                         />
                         <label>📅 Mes:</label>
                         <input 
-                            type="number" 
-                            min="1" max="12"
-                            value={date.month}
-                            onChange={(e) => setDate({ ...date, month: e.target.value })}
+                            id="month-input"
+                            type="number"
+                            name="month"
+                            min="1" 
+                            max="12" 
+                            value={date.month} 
+                            onChange={handleDateChange}
+                            onKeyDown={handleDateKeyDown} 
                         />
                     </div>
                     
@@ -201,7 +234,6 @@ const HomePage = () => {
                 </div>
             </div>
 
-            {/* --- MEJORA: Manejo del estado de reprocesamiento --- */}
             {results && results.reprocessing && (
                 <div className="results-section">
                      <div className="reprocessing-card">
@@ -233,7 +265,6 @@ const HomePage = () => {
                             <p className="detail-description">{results.detailDescription}</p>
                             
                             <h3 style={{marginTop: '15px'}}>Visualización</h3>
-                            {/* 2. Reemplazar el placeholder con el componente del gráfico */}
                             <DistributionChart 
                                 mean={results.historicalMean}
                                 threshold={results.threshold}
@@ -250,7 +281,6 @@ const HomePage = () => {
                 </div>
             )}
 
-            {/* --- MEJORA: Añadir el Chatbox flotante --- */}
             <Chatbox location={location} date={date} variable={variable} />
         </div>
     );
