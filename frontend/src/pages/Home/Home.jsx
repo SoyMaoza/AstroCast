@@ -145,15 +145,15 @@ const HomePage = () => {
                         <input 
                             type="number" 
                             min="1" max="31"
-                            value={date.day} 
-                            onChange={(e) => setDate({ ...date, day: e.target.value })} 
+                            value={date.day}
+                            onChange={(e) => setDate({ ...date, day: e.target.value })}
                         />
                         <label>📅 Mes:</label>
                         <input 
                             type="number" 
                             min="1" max="12"
-                            value={date.month} 
-                            onChange={(e) => setDate({ ...date, month: e.target.value })} 
+                            value={date.month}
+                            onChange={(e) => setDate({ ...date, month: e.target.value })}
                         />
                     </div>
                     
@@ -251,7 +251,7 @@ const HomePage = () => {
             )}
 
             {/* --- MEJORA: Añadir el Chatbox flotante --- */}
-            <Chatbox />
+            <Chatbox location={location} date={date} variable={variable} />
         </div>
     );
 };
