@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-lea
 import DistributionChart from '../../components/DistributionChart'; // <-- 1. Importar el nuevo componente
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-const API_URL = 'http://localhost:3000/api/probability'; 
+const API_URL = 'http://localhost:3000/api/climate-probability'; 
 
 // DESPUÉS (ESPAÑOL - Correcto)
 const VARIABLES = [
