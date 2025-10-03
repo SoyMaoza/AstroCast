@@ -150,6 +150,7 @@
 .map-card {
     display: flex;
     flex-direction: column;
+    min-height: 400px; /* <-- AÑADIDO: Altura mínima para el contenedor del mapa */
 }
 .map-title {
     color: var(--color-primary-blue);
