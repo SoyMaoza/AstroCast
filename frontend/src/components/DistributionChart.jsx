@@ -23,6 +23,16 @@ const DistributionChart = ({ mean, threshold, unit }) => {
     // Asumimos una desviación estándar para la visualización. 
     // Un valor entre 5 y 10 suele funcionar bien para temperaturas en K.
     const stdDev = 8; 
+
+    // --- MEJORA: Comprobación de props para evitar errores ---
+    // Si los datos principales no son números válidos, no renderizar el gráfico.
+    if (typeof mean !== 'number' || typeof threshold !== 'number') {
+        return (
+            <div style={{ width: '100%', height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+                Datos insuficientes para mostrar la visualización.
+            </div>
+        );
+    }
     const chartData = generateBellCurveData(mean, stdDev);
 
     // Determina si el umbral representa un riesgo por ser alto o bajo

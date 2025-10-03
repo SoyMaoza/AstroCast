@@ -200,6 +200,16 @@ const HomePage = () => {
                 </div>
             </div>
 
+            {/* --- MEJORA: Manejo del estado de reprocesamiento --- */}
+            {results && results.reprocessing && (
+                <div className="results-section">
+                     <div className="reprocessing-card">
+                        <h3>⚙️ Procesando Datos Históricos</h3>
+                        <p>{results.message}</p>
+                    </div>
+                </div>
+            )}
+
             {results && (
                 <div className="results-section">
                     <h2 className="results-header">
