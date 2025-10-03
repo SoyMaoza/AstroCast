@@ -8,16 +8,7 @@ import { IoMdSend } from "react-icons/io";
 // Apuntamos al backend en el puerto 3001
 const API_URL = "http://localhost:3001/api/chat";
 
-<<<<<<< HEAD
-// Apuntamos al nuevo backend en el puerto 3001
-const API_URL = 'http://localhost:3001/api/chat';
 const Chatbox = ({ location, date, variable }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState([
-        // --- MEJORA: Usar IDs únicos para todos los mensajes ---
-        { id: 'initial-message', sender: 'bot', text: '¡Hola! Soy Astro, tu asistente. ¿En qué puedo ayudarte con los datos de la NASA hoy?' }
-=======
-const Chatbox = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -60,15 +51,26 @@ const Chatbox = () => {
     setMessages((prev) => [
       ...prev,
       { id: Date.now(), sender: "user", text: userMessage },
->>>>>>> b86de8eb3dcabfff08376b7b4b053c9a2a56d9b0
     ]);
     setIsLoading(true);
 
     try {
+      // --- MEJORA: Formatear la fecha y preparar el cuerpo de la petición ---
+      // Aseguramos que el mes y día tengan dos dígitos (ej: 1 -> "01")
+      const formattedDate = `${String(date.month).padStart(2, '0')}-${String(
+        date.day
+      ).padStart(2, '0')}`;
+
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify({
+          message: userMessage,
+          lat: location.lat,
+          lon: location.lon,
+          date: formattedDate, // Formato "MM-DD"
+          variable: variable,
+        }),
       });
 
       if (!response.ok) {
@@ -101,30 +103,9 @@ const Chatbox = () => {
 
   // --- LÓGICA DE WHATSAPP ---
 
-<<<<<<< HEAD
-        try {
-            // --- MEJORA: Formatear la fecha y preparar el cuerpo de la petición ---
-            // Aseguramos que el mes y día tengan dos dígitos (ej: 1 -> "01")
-            const formattedDate = `${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
-
-            // Llamada al backend de index.js
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: userMessage,
-                    lat: location.lat,
-                    lon: location.lon,
-                    date: formattedDate, // Formato "MM-DD"
-                    variable: variable
-                })
-            });
-=======
   const formatMessagesForWhatsapp = () => {
     let formattedText = "🤖 Reporte de Asesor Astro (NASA):\n\n";
->>>>>>> b86de8eb3dcabfff08376b7b4b053c9a2a56d9b0
-
-    messages.forEach((msg) => {
+    messages.forEach(msg => {
       // Incluimos ambos mensajes para tener el contexto
       if (msg.sender === "bot" || msg.sender === "user") {
         // Reemplazamos saltos de línea y codificamos para URL
@@ -248,6 +229,5 @@ const Chatbox = () => {
       </button>
     </div>
   );
-};
-
+}
 export default Chatbox;
