@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './Home.css'; 
 import ProbabilityCard from '../../components/ProbabilityCard';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import DistributionChart from '../../components/DistributionChart'; // <-- 1. Importar el nuevo componente
+import DistributionChart from '../../components/DistributionChart';
+import Chatbox from '../../components/Chatbox'; // <-- 1. Importar el nuevo componente de chat
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -248,6 +249,9 @@ const HomePage = () => {
                     </div>
                 </div>
             )}
+
+            {/* --- MEJORA: Añadir el Chatbox flotante --- */}
+            <Chatbox />
         </div>
     );
 };
