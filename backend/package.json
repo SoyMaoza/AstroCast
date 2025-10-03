@@ -20,7 +20,8 @@
     "express": "^5.1.0",
     "mongoose": "^8.18.3",
     "netcdfjs": "^3.0.0",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "openai": "^6.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
