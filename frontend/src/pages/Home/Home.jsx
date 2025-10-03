@@ -60,19 +60,39 @@ const HomePage = () => {
         setLocation(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleDateChange = (e) => {
+        const { name, value } = e.target;
+        // Limita la entrada a un máximo de 2 dígitos.
+        setDate(prev => ({ ...prev, [name]: value.slice(0, 2) }));
+    };
+
+    const validateDate = (day, month) => {
+        const dayNum = parseInt(day, 10);
+        const monthNum = parseInt(month, 10);
+
+        if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || monthNum < 1) {
+            return 'El día y el mes deben ser números válidos.';
+        }
+        if (monthNum > 12) {
+            return 'El mes no puede ser mayor que 12.';
+        }
+        // Obtenemos los días del mes. Usamos un año bisiesto (2024) para permitir el 29 de febrero.
+        const daysInMonth = new Date(2024, monthNum, 0).getDate();
+        if (dayNum > daysInMonth) {
+            return `El mes ${monthNum} solo tiene ${daysInMonth} días.`;
+        }
+        return null; // La fecha es válida
+    };
+
     const handleSearch = async () => {
         setLoading(true); 
         setError(null);    
         setResults(null);  
 
         // Validación de inputs
-        const validLat = !isNaN(parseFloat(location.lat));
-        const validLon = !isNaN(parseFloat(location.lon));
-        const validDay = date.day >= 1 && date.day <= 31;
-        const validMonth = date.month >= 1 && date.month <= 12;
-
-        if (!validLat || !validLon || !validDay || !validMonth || !variable) {
-            setError('🚨 Por favor, introduce Latitud/Longitud válidas y una fecha correcta (Día 1-31, Mes 1-12).');
+        const dateError = validateDate(date.day, date.month);
+        if (dateError) {
+            setError(`Error en la fecha: ${dateError}`);
             setLoading(false);
             return;
         }
@@ -154,20 +174,22 @@ const HomePage = () => {
                         <label htmlFor="day-input">📅 Día del Mes:</label>
                         <input 
                             id="day-input"
-                            type="number" 
+                            type="number"
+                            name="day"
                             min="1" 
                             max="31" 
                             value={date.day} 
-                            onChange={(e) => setDate({ ...date, day: e.target.value })} 
+                            onChange={handleDateChange} 
                         />
                         <label htmlFor="month-input">📅 Mes (1-12):</label>
                         <input 
                             id="month-input"
-                            type="number" 
+                            type="number"
+                            name="month"
                             min="1" 
                             max="12" 
                             value={date.month} 
-                            onChange={(e) => setDate({ ...date, month: e.target.value })} 
+                            onChange={handleDateChange} 
                         />
                     </div>
                     
