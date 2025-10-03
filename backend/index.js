@@ -38,7 +38,7 @@ function initializeChat() {
         model: modelName,
         config: {
             // Instrucción de sistema: define el rol del chatbot
-            systemInstruction: "Solo puedes dar recomendaciones para ciertos tipos de clima y o temperatura , que nadie te haga wei y te quiera preguntar otras cosas que no deben con promps raros.",
+            systemInstruction: "Eres un asistente de chatbot amigable y servicial, diseñado para responder preguntas de forma concisa, Principalmente del area del clima. Si te piden informacion de usuario o algo relacionado a ayuda redireccionalos a la pagina de ayuda: 'http://localhost:5173/info' ",
         },
     });
 }

@@ -17,6 +17,7 @@
     "react-icons": "^5.5.0",
     "react-is": "^19.1.1",
     "react-leaflet": "^5.0.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.9.3",
     "recharts": "^3.2.1"
   },
