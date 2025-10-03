@@ -1,5 +1,5 @@
 // models/Clima.js
-export class EstadisticasClima {
+class EstadisticasClima {
   /**
    * Procesa datos climáticos históricos para una ubicación y día del año específicos.
    * @param {string} ubicacion - La ubicación de los datos (ej. "Mazatlán, MX").
@@ -53,6 +53,7 @@ export class EstadisticasClima {
    * @returns {number} - Probabilidad en porcentaje (%).
    */
   getProbabilidadCalor(umbral = 35) {
+    if (this.aniosAnalizados === 0) return 0;
     const diasCalurosos = this.historico.temperaturas.filter(t => t > umbral).length;
     return parseFloat(((diasCalurosos / this.aniosAnalizados) * 100).toFixed(2));
   }
@@ -62,6 +63,7 @@ export class EstadisticasClima {
    * @returns {number} - Probabilidad en porcentaje (%).
    */
   getProbabilidadVientoFuerte(umbral = 25) {
+    if (this.aniosAnalizados === 0) return 0;
     const diasVentosos = this.historico.vientos.filter(v => v > umbral).length;
     return parseFloat(((diasVentosos / this.aniosAnalizados) * 100).toFixed(2));
   }
@@ -70,19 +72,38 @@ export class EstadisticasClima {
    * @returns {number} - Probabilidad en porcentaje (%).
    */
   getProbabilidadLluvia() {
+    if (this.aniosAnalizados === 0) return 0;
     const diasLluviosos = this.historico.precipitaciones.filter(p => p > 0.1).length;
     return parseFloat(((diasLluviosos / this.aniosAnalizados) * 100).toFixed(2));
   }
   /**
    * Genera un resumen de las condiciones probables para el día consultado.
    */
-getResumenProbabilidades() {
-  console.log(`\n📊 Resumen de Probabilidades para el ${this.diaDelAnio} en ${this.ubicacion} (Basado en ${this.aniosAnalizados} años)`);
-  console.log(`🌡️ Temperatura: Promedio ${this.estadisticas.temperatura.promedio}°C (Min: ${this.estadisticas.temperatura.min}°C, Max: ${this.estadisticas.temperatura.max}°C)`);
-  console.log(`💨 Viento: Promedio ${this.estadisticas.viento.promedio} km/h (Ráfagas hasta ${this.estadisticas.viento.max} km/h)`);
-  console.log(`-----------------------------`);
-  console.log(`🥵 Probabilidad de día "muy caliente" (>32°C): ${this.getProbabilidadCalor(32)}%`);
-  console.log(`🌬️ Probabilidad de día "muy ventoso" (>25 km/h): ${this.getProbabilidadVientoFuerte(25)}%`);
-  console.log(`💧 Probabilidad de día "muy húmedo" (lluvia): ${this.getProbabilidadLluvia()}%`);
+  getResumenProbabilidades() {
+    console.log(this.generarTextoResumen());
+  }
+
+  /**
+   * --- MEJORA: Genera un string con el resumen para ser usado en la API ---
+   * @returns {string} Un texto formateado con el resumen de las estadísticas.
+   */
+  generarTextoResumen() {
+    // --- MEJORA: Mensaje especial si no se encontraron datos ---
+    if (this.aniosAnalizados === 0) {
+      return `
+Resumen para la ${this.ubicacion} el día ${this.diaDelAnio}:
+No se encontraron datos históricos suficientes en los archivos de la NASA para esta ubicación y fecha específicas. No es posible calcular un pronóstico probabilístico.
+      `.trim();
+    }
+    return `
+Resumen para la ${this.ubicacion} el día ${this.diaDelAnio} (basado en ${this.aniosAnalizados} años de historia):
+- Temperatura: Promedio de ${this.estadisticas.temperatura.promedio}°C, con máximas históricas de ${this.estadisticas.temperatura.max}°C.
+- Viento: Promedio de ${this.estadisticas.viento.promedio} km/h.
+- Probabilidad de día muy caliente (>32°C): ${this.getProbabilidadCalor(32)}%.
+- Probabilidad de día muy ventoso (>25 km/h): ${this.getProbabilidadVientoFuerte(25)}%.
+- Probabilidad de lluvia: ${this.getProbabilidadLluvia()}%.
+    `.trim();
+  }
 }
-}
+
+module.exports = { EstadisticasClima };

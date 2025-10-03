@@ -3,7 +3,7 @@ import './Chatbox.css'; // Crearemos este archivo a continuación
 
 // Apuntamos al nuevo backend en el puerto 3001
 const API_URL = 'http://localhost:3001/api/chat';
-const Chatbox = () => {
+const Chatbox = ({ location, date, variable }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
         // --- MEJORA: Usar IDs únicos para todos los mensajes ---
@@ -39,11 +39,21 @@ const Chatbox = () => {
         setIsLoading(true);
 
         try {
+            // --- MEJORA: Formatear la fecha y preparar el cuerpo de la petición ---
+            // Aseguramos que el mes y día tengan dos dígitos (ej: 1 -> "01")
+            const formattedDate = `${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
+
             // Llamada al backend de index.js
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: userMessage }) // No se necesita sessionId aquí
+                body: JSON.stringify({ 
+                    message: userMessage,
+                    lat: location.lat,
+                    lon: location.lon,
+                    date: formattedDate, // Formato "MM-DD"
+                    variable: variable
+                })
             });
 
             if (!response.ok) {
