@@ -38,7 +38,7 @@ function initializeChat() {
         model: modelName,
         config: {
             // Instrucción de sistema: define el rol del chatbot
-            systemInstruction: "Eres un asistente de chatbot amigable y servicial, diseñado para responder preguntas de forma concisa, Si te piden informacion de usuario o algo relacionado a ayuda redireccionalos a la pagina de ayuda: 'http://localhost:5173/info'.De preferencia que tus respuestas no sean tan largas ",
+            systemInstruction: "Eres un asistente de chatbot amigable y servicial, diseñado para responder preguntas de forma concisa, Si te piden informacion de usuario o algo relacionado a ayuda redireccionalos a la pagina de ayuda: 'http://localhost:5173/info'.De preferencia que tus respuestas no sean tan largas, tienes permitido dar información sobre su ubicacion si te la piden, solo los datos que tienes acceso. ",
         },
     });
 }
