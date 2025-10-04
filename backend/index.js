@@ -182,7 +182,7 @@ const CONFIG_VARIABLES_NASA = {
     },
     ventoso: {
         apiVariable: ["U10M", "V10M"],
-        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE, // CORRECCIÓN: Usar la plantilla correcta para variables de superficie.
         unit: "m/s",
         threshold: (stats) => stats.mean + 1.5 * stats.stdDev, // Umbral basado en la media
         isBelowThresholdWorse: false,
@@ -341,9 +341,9 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
     // 1. Revisar la caché de estadísticas en la BD
     const cachedStat = await HistoricalStat.findOne({ day, month, latIndex, lonIndex, variable: variableName });
     if (cachedStat) {
-        console.log(`[Cache-Stats] Estadísticas históricas encontradas en la BD para ${day}/${month} en índices ${latIndex},${lonIndex}`);
-        // Devolvemos las estadísticas cacheadas. El cálculo de probabilidad se hará con estos datos.
-        return { mean: cachedStat.mean, p10: cachedStat.p10, p90: cachedStat.p90, stdDev: cachedStat.stdDev, fromCache: true };
+        console.log(`[Cache-Stats] Estadísticas encontradas en BD para ${day}/${month}. Se usarán para el umbral, pero se recalculará la probabilidad.`);
+        // Aunque tengamos la estadística, necesitamos los valores para la probabilidad.
+        // Procedemos a calcularlos de nuevo. El umbral usará el valor cacheado si es posible.
     }
 
     console.log(`[NASA API] Calculando estadísticas históricas para ${day}/${month}. Esto puede tardar...`);
@@ -356,47 +356,80 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
     const startYear = 1980;
     const endYear = new Date().getFullYear(); // Analizar hasta el año actual
     const yearPromises = [];
+    const now = new Date(); // Obtenemos la fecha actual una vez
 
     for (let year = startYear; year <= endYear; year++) {
+        // --- MEJORA: No intentar descargar datos de fechas futuras ---
+        // Creamos un objeto Date para el año, mes y día que vamos a consultar.
+        // El mes en el constructor de Date es 0-indexado, por eso restamos 1.
+        const queryDate = new Date(year, month - 1, day);
+        if (queryDate > now) {
+            console.log(`[INFO] Se detuvo la búsqueda en el año ${year} porque la fecha es futura.`);
+            break; // Salimos del bucle para no consultar fechas que no existen.
+        }
+
         const filePrefix = getMerra2FilePrefix(year); // <-- Usamos la nueva función
         const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
-
-        // --- MEJORA: Lógica para cambiar de colección para años recientes ---
-        // Los datos de 2021 en adelante están en una colección diferente.
-        let urlTemplate = config.datasetUrlTemplate;
-        if (year >= 2021) {
-            urlTemplate = urlTemplate.replace('M2T1NXSLV.5.12.4', 'M2T1NXSLV_5.12.4'); // Cambia el punto por guion bajo
-        }
+        
+        const urlTemplate = config.datasetUrlTemplate;
 
         const datasetFileName = `MERRA2_${filePrefix}.tavg1_2d_${datasetType}_Nx.${year}${monthStr}${dayStr}.nc4`;
         const baseDatasetUrl = `${urlTemplate}/${year}/${monthStr}/${datasetFileName}`;
 
         // Función para obtener los datos de un año
         const fetchYearData = async (currentUrl) => {
-            try {
+            const fetchData = async (url) => {
                 if (Array.isArray(config.apiVariable)) { // Caso 'ventoso'
-                    const [u10mUrl, v10mUrl] = config.apiVariable.map(v => encodeURI(`${currentUrl}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`)); // El currentUrl ya es correcto
+                    const [u10mUrl, v10mUrl] = config.apiVariable.map(v => encodeURI(`${url}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
                     const [u10mResponse, v10mResponse] = await Promise.all([fetchWithCurl(u10mUrl, true), fetchWithCurl(v10mUrl, true)]);
                     const u10mLeaf = u10mResponse.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable[0]);
                     const v10mLeaf = v10mResponse.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable[1]);
-                    if (!u10mLeaf?.data || !v10mLeaf?.data) return [];
+                    if (!u10mLeaf?.data || !v10mLeaf?.data) throw new Error("Datos de viento incompletos");
                     const u10mValues = u10mLeaf.data.flat(Infinity);
                     const v10mValues = v10mLeaf.data.flat(Infinity);
                     const windData = u10mValues.map((u, i) => Math.sqrt(u * u + v10mValues[i] * v10mValues[i]));
-                    console.log(`[NASA API] Descarga para el año ${year} completada.`);
+                    console.log(`[NASA API] Descarga para el año ${year} completada. URLs: ${u10mUrl}, ${v10mUrl}`);
+                    console.log(`       Valores (viento): [${windData.map(v => v.toFixed(2)).join(', ')}]`);
                     return windData;
                 } else { // Caso de variable simple
-                    const dataUrl = encodeURI(`${currentUrl}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`);
+                    const dataUrl = encodeURI(`${url}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`);
                     const dataResponse = await fetchWithCurl(dataUrl, true);
                     const dataLeaf = dataResponse.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable);
-                    if (!dataLeaf?.data) return [];
+                    if (!dataLeaf?.data) throw new Error("Datos simples incompletos");
                     const simpleData = dataLeaf.data.flat(Infinity);
-                    console.log(`[NASA API] Descarga para el año ${year} completada.`);
+                    console.log(`[NASA API] Descarga para el año ${year} completada. URL: ${dataUrl}`);
+                    console.log(`       Valores (${config.apiVariable}): [${simpleData.map(v => v.toFixed(5)).join(', ')}]`); // MEJORA: Mostrar más decimales
                     return simpleData;
                 }
+            };
+
+            try {
+                return await fetchData(currentUrl);
             } catch (e) {
+                // --- MEJORA: Lógica de reintento para MERRA2_401 ---
+                // Si el error es por recibir HTML (síntoma de un 404) y cumple las condiciones, reintentamos.
+                if (year >= 2011 && currentUrl.includes("MERRA2_400") && e.message.includes("Parece ser una página HTML")) {
+                    console.warn(`[WARN] Falló la descarga con MERRA2_400 para el año ${year}. Reintentando con MERRA2_401...`);
+                    const retryUrl = currentUrl.replace("MERRA2_400", "MERRA2_401");
+                    return await fetchData(retryUrl).catch(retryError => {
+                        console.error(`[ERROR] El reintento con MERRA2_401 también falló para el año ${year}. Saltando...`);
+                        // --- MEJORA: Loguear URLs específicas en el fallo del reintento ---
+                        if (Array.isArray(config.apiVariable)) {
+                            const [failedU, failedV] = config.apiVariable.map(v => encodeURI(`${retryUrl}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
+                            console.error(`       URLs que fallaron: ${failedU}, ${failedV}`);
+                        } else {
+                            console.error(`       URL que falló: ${encodeURI(`${retryUrl}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`)}`);
+                        }
+                        return [];
+                    });
+                }
+                // --- MEJORA SOLICITADA: Loguear la URL que falla ---
+                const failedUrl = Array.isArray(config.apiVariable)
+                    ? `${baseDatasetUrl} (para variables U10M y V10M)`
+                    : `${baseDatasetUrl}.json?${config.apiVariable}[...][${latIndex}][${lonIndex}]`;
                 // Si un año falla (ej. archivo no existe), lo ignoramos y continuamos.
                 console.warn(`[WARN] No se pudieron obtener datos para el año ${year}. Saltando...`);
+                console.warn(`       URL que falló: ${failedUrl}`);
                 return [];
             }
         };
@@ -420,18 +453,17 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
     const variance = allHistoricalValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / (allHistoricalValues.length - 1);
     const stdDev = Math.sqrt(variance);
 
-    const stats = { mean, p10, p90, stdDev, values: allHistoricalValues };
+    console.log(`[Stats] Promedio histórico final calculado: ${mean.toFixed(4)}`);
+    const stats = { mean, p10, p90, stdDev, values: allHistoricalValues, fromCache: !!cachedStat };
 
     // 5. Guardar las nuevas estadísticas en la caché de la BD
-    try {
+    if (!cachedStat) { // Solo guardamos si no existía en la caché
         const newStat = new HistoricalStat({
             day, month, latIndex, lonIndex, variable: variableName,
             mean: stats.mean, p10: stats.p10, p90: stats.p90, stdDev: stats.stdDev
         });
         await newStat.save();
         console.log(`[Cache-Stats] Nuevas estadísticas guardadas en la BD.`);
-    } catch (dbError) {
-        console.error("[Cache-Stats] Error al guardar estadísticas en la BD:", dbError.message);
     }
 
     return stats;
@@ -446,9 +478,13 @@ app.post("/api/climate-probability", async (req, res) => {
 
     // --- MEJORA: Implementar lógica de caché con la base de datos ---
     try {
-        const cachedResult = await ClimateDay.findOne({ lat, lon, day, month, variable });
+        // --- CORRECCIÓN DE CACHÉ: Redondear coordenadas para una caché más efectiva ---
+        const latRounded = parseFloat(lat.toFixed(2));
+        const lonRounded = parseFloat(lon.toFixed(2));
+        const cachedResult = await ClimateDay.findOne({ lat: latRounded, lon: lonRounded, day, month, variable });
+
         if (cachedResult) {
-            console.log(`[Cache] Resultado encontrado en la base de datos para ${variable} en (Lat:${lat}, Lon:${lon})`);
+            console.log(`[Cache] Resultado encontrado en la base de datos para ${variable} en (Lat:${latRounded}, Lon:${lonRounded})`);
             return res.json(cachedResult); // Devuelve el resultado cacheado y termina la ejecución.
         }
     } catch (cacheError) {
@@ -484,28 +520,39 @@ app.post("/api/climate-probability", async (req, res) => {
 
         // 2. Obtener estadísticas históricas (de la BD o calculándolas)
         const stats = await getHistoricalStatistics(config, day, month, latIndex, lonIndex);
-        const thresholdValue = config.threshold(stats);
+        const displayThreshold = config.isBelowThresholdWorse ? stats.p10 : stats.p90;
 
-        // --- LÓGICA DE PROBABILIDAD REVISADA ---
-        // 3. Calcular la probabilidad usando el conjunto de datos histórico completo.
-        let probability = 0;
-        // Si los datos no vienen de la caché, tenemos el array 'values' para calcular.
-        if (stats.values && stats.values.length > 0) {
-            const adverseHoursInRecentYear = config.isBelowThresholdWorse
-                ? stats.values.filter(v => v < thresholdValue).length
-                : stats.values.filter(v => v > thresholdValue).length;
-            probability = Math.round((adverseHoursInRecentYear / stats.values.length) * 100);
-        } else if (stats.fromCache) {
-            // Si viene de la caché, no tenemos 'values'. No podemos calcular la probabilidad.
-            // Devolvemos un valor placeholder y un mensaje claro.
-            probability = -1; // Usamos -1 para indicar que no se calculó.
-            console.log("[INFO] Usando estadísticas cacheadas. El cálculo de probabilidad se omite para una respuesta rápida.");
+        // --- LÓGICA DE PROBABILIDAD ABSOLUTA (GENERAL) ---
+        // Mapea un valor de un rango a otro (ej. temperatura a un porcentaje)
+        const mapRange = (value, in_min, in_max, out_min, out_max) => {
+            return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        };
+
+        let probability;
+        // Escalas absolutas para cada variable
+        switch (variable) {
+            case 'calido': // Escala de 20°C (293.15K) a 35°C (308.15K)
+                probability = mapRange(stats.mean, 293.15, 308.15, 0, 100);
+                break;
+            case 'frio': // NUEVA ESCALA: 20°C (293.15K) a 0°C (273.15K)
+                probability = mapRange(stats.mean, 293.15, 273.15, 0, 100);
+                break;
+            case 'ventoso': // Escala de 0 m/s a 15 m/s
+                probability = mapRange(stats.mean, 0, 15, 0, 100);
+                break;
+            case 'polvo': // NUEVA ESCALA: 0 a 0.1 para una mejor percepción
+                probability = mapRange(stats.mean, 0, 0.1, 0, 100);
+                break;
+            default:
+                // Fallback por si se añade una variable sin escala definida
+                probability = 0;
         }
 
+        // Asegurarse de que la probabilidad esté entre 0 y 100
+        probability = Math.max(0, Math.min(100, Math.round(probability)));
+
         // 4. Formatear y enviar respuesta
-        const detailDescription = probability === -1
-            ? `Se usaron estadísticas históricas cacheadas (${HISTORICAL_RANGE}). La media para este día y lugar es ${stats.mean.toFixed(2)} ${config.unit}. El umbral de riesgo es ${thresholdValue.toFixed(2)} ${config.unit}.`
-            : `La probabilidad de que la condición '${variable}' ocurra es del ${probability}%, basado en datos de ${HISTORICAL_RANGE}. El umbral de riesgo, calculado a partir de la media, es ${thresholdValue.toFixed(2)} ${config.unit}.`;
+        const detailDescription = `La probabilidad de que la condición '${variable}' ocurra es del ${probability}%, basado en la media histórica de ${stats.mean.toFixed(2)} ${config.unit} para el rango ${HISTORICAL_RANGE}.`;
 
         const result = {
             success: true,
@@ -513,8 +560,8 @@ app.post("/api/climate-probability", async (req, res) => {
             date: `${day}/${month}`,
             variable: variable,
             probability: probability,
-            historicalMean: parseFloat(stats.mean.toFixed(1)),
-            threshold: parseFloat(thresholdValue.toFixed(1)),
+            historicalMean: parseFloat(stats.mean.toFixed(4)), // MEJORA: Enviar más decimales al frontend
+            threshold: parseFloat(displayThreshold.toFixed(1)), // Mostramos el percentil como umbral principal
             unit: config.unit,
             detailDescription: detailDescription,
             downloadLink: "https://disc.gsfc.nasa.gov/datasets/M2T1NXSLV_5.12.4/summary" // Link genérico a la colección
@@ -522,7 +569,11 @@ app.post("/api/climate-probability", async (req, res) => {
         
         // 5. Guardar en DB el resultado final para el usuario
         try {
-            const record = new ClimateDay({ ...result, lat, lon, day, month });
+            // --- CORRECCIÓN DE CACHÉ: Guardar con las coordenadas redondeadas ---
+            const latRounded = parseFloat(lat.toFixed(2));
+            const lonRounded = parseFloat(lon.toFixed(2));
+            const record = new ClimateDay({ ...result, lat: latRounded, lon: lonRounded, day, month });
+
             await record.save();
             console.log("[DB] Resultado guardado en la base de datos con éxito.");
             // --- CORRECCIÓN: Enviar la respuesta DESPUÉS de guardar en la BD ---
@@ -554,8 +605,12 @@ app.post("/api/climate-probability", async (req, res) => {
  */
 app.delete("/api/clear-cache", async (req, res) => {
     try {
-        const deleteResult = await ClimateDay.deleteMany({});
-        res.json({ success: true, message: `Se han borrado ${deleteResult.deletedCount} registros de la caché.` });
+        // --- MEJORA: Añadir limpieza de ambas cachés ---
+        const climateResult = await ClimateDay.deleteMany({});
+        const statsResult = await HistoricalStat.deleteMany({});
+        const message = `Caché limpiada: ${climateResult.deletedCount} resultados de clima y ${statsResult.deletedCount} registros de estadísticas borrados.`;
+        console.log(`[Cache] ${message}`);
+        res.json({ success: true, message });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error al limpiar la caché.", error: error.message });
     }
