@@ -7,7 +7,7 @@ import Chatbox from '../../components/Chatbox';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-const API_URL = 'http://localhost:3000/api/climate-probability';
+const API_URL = 'http://localhost:3001/api/climate-probability';
 
 // Variables climáticas
 const VARIABLES = [
