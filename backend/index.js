@@ -18,7 +18,7 @@ app.use(express.json());
 // --- Configuración de Gemini ---
 const API_KEY = process.env.API_KEY;
 const ai = new GoogleGenAI({ apiKey: API_KEY });
-const modelName = "gemini-1.5-flash";
+const modelName = "gemini-2.5-flash";
 let chat = null;
 
 function initializeChat() {
