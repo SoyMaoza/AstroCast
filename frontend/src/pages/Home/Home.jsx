@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Home.css'; 
 import ProbabilityCard from '../../components/ProbabilityCard';
+import { FaSearch } from 'react-icons/fa'; // Importamos el ícono de búsqueda
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import DistributionChart from '../../components/DistributionChart';
 import Chatbox from '../../components/Chatbox';
@@ -57,6 +58,8 @@ function LocationMarker({ location, setLocation }) {
 
 const HomePage = ({ location, setLocation, date, setDate, variable, setVariable }) => {
 
+    // --- NUEVO: Estado para el buscador de ubicaciones ---
+    const [searchQuery, setSearchQuery] = useState("");
     // Estados principales
 
 
@@ -98,6 +101,34 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
             return `El mes ${monthNum} solo tiene ${daysInMonth} días.`;
         }
         return null;
+    };
+
+    // --- NUEVO: Función para buscar coordenadas por nombre de lugar ---
+    const handleGeocodeSearch = async (e) => {
+        e.preventDefault();
+        if (!searchQuery) return;
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Usamos la API de Nominatim (OpenStreetMap) que es gratuita y no requiere clave.
+            const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`;
+            const response = await fetch(geocodeUrl);
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const { lat, lon } = data[0]; // Tomamos el primer resultado
+                setLocation({ lat: parseFloat(lat), lon: parseFloat(lon) });
+            } else {
+                setError(`No se encontraron resultados para "${searchQuery}".`);
+            }
+        } catch (err) {
+            console.error("Error en la geocodificación:", err);
+            setError("No se pudo conectar al servicio de búsqueda de ubicaciones.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSearch = async () => {
@@ -150,6 +181,22 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                 <h1>Tu Guía de Clima Histórico</h1>
                 <p>Planifica tu evento al aire libre con datos de observación terrestre de la NASA.</p>
             </header>
+
+            {/* --- NUEVO: Buscador de Ubicaciones --- */}
+            <div className="location-search-container">
+                <form onSubmit={handleGeocodeSearch} className="location-search-form">
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Ingrese una ubicación:"
+                        className="location-search-input"
+                    />
+                    <button type="submit" className="location-search-btn" aria-label="Buscar ubicación">
+                        <FaSearch />
+                    </button>
+                </form>
+            </div>
 
             <div className="control-panel">
                 {/* Inputs de consulta */}

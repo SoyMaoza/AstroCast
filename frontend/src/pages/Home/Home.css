@@ -55,7 +55,69 @@
     padding-bottom: 10px;
     margin-top: 0;
 }
+/* ==================================== */
+/* --- ESTILOS PARA EL BUSCADOR DE UBICACIONES (Estilo Floating Pill) --- */
+/* ==================================== */
 
+/* Contenedor principal del buscador */
+.location-search-container {
+    /* Define el ancho máximo para que no ocupe todo el espacio de la página */
+    max-width: 600px; 
+    margin: 20px auto 40px auto; /* Centrarlo y darle espacio arriba y abajo */
+}
+
+/* El formulario que envuelve el input y el botón */
+.location-search-form {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    
+    /* 🔥 Diseño Clave: Fondo, Bordes Redondeados y Sombra (Pill Look) */
+    background-color: var(--color-card-bg); /* Blanco */
+    border-radius: 40px; /* Bordes muy redondeados para la forma de píldora */
+    padding: 10px 20px; /* Espacio interno */
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); /* Sombra que le da el efecto flotante */
+    transition: box-shadow 0.2s;
+}
+
+.location-search-form:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); /* Sombra ligeramente más intensa al pasar el ratón */
+}
+
+/* El campo de texto (Input) */
+.location-search-input {
+    /* Es crucial eliminar el borde y el fondo del input para que se fusione con el form */
+    flex-grow: 1;
+    border: none !important; 
+    background-color: transparent !important; 
+    padding: 10px 0; /* Espacio vertical para centrar el texto */
+    font-size: 1.1rem;
+    color: var(--color-text-dark); 
+    
+    /* Limpiar estilos de enfoque/focus */
+    outline: none;
+    box-shadow: none !important; 
+}
+
+.location-search-input::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.8;
+}
+
+/* El botón de búsqueda (Lupa) */
+.location-search-btn {
+    background-color: transparent;
+    border: none;
+    color: var(--color-text-secondary); /* Color gris suave */
+    font-size: 1.2rem; 
+    padding: 0 5px 0 15px; /* Padding para separar la lupa del texto */
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.location-search-btn:hover {
+    color: var(--color-primary-indigo);
+}
 
 .input-group {
     margin-bottom: 20px;

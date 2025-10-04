@@ -81,10 +81,6 @@ const Chatbox = ({ location, date, variable }) => {
     setIsLoading(true);
 
     try {
-      const formattedDate = `${String(date.month).padStart(2, '0')}-${String(
-        date.day
-      ).padStart(2, '0')}`;
-
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,7 +88,9 @@ const Chatbox = ({ location, date, variable }) => {
           message: userMessage,
           lat: location.lat,
           lon: location.lon,
-          date: formattedDate,
+          // --- CORRECCIÓN: Enviar la fecha como objeto para consistencia ---
+          day: parseInt(date.day),
+          month: parseInt(date.month),
           variable: variable,
         }),
       });
@@ -230,9 +228,16 @@ const Chatbox = ({ location, date, variable }) => {
           )}
         </div>
       )}
-      <button onClick={toggleChat} className="chat-toggle-btn">
-        <MdOutlineMessage />
-      </button>
+      {/* --- CORRECCIÓN: Se restaura la estructura original del contenedor --- */}
+      {/* El botón de apertura ahora está dentro del mismo contenedor que el chat, */}
+      {/* pero solo se renderiza si el chat está cerrado. */}
+      <div className="chat-toggle-container">
+        {!isOpen && (
+          <button onClick={toggleChat} className="chat-toggle-btn">
+            <MdOutlineMessage />
+          </button>
+        )}
+      </div>
     </div>
   );
 };
