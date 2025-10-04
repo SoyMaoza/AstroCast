@@ -33,7 +33,9 @@ const conditionConfig = {
 const ProbabilityCard = ({ variable, probability, historicalMean, threshold, unit, downloadLink, detailDescription }) => {
     // Determinar la clase de riesgo basada en la probabilidad para cambiar el color
     let riskClass;
-    if (probability >= 70) {
+    if (probability === -1) {
+        riskClass = 'risk-low'; // Color neutral para respuestas cacheadas
+    } else if (probability >= 70) {
         riskClass = 'risk-extreme'; // Rojo
     } else if (probability >= 40) {
         riskClass = 'risk-high';    // Naranja
@@ -56,7 +58,12 @@ const ProbabilityCard = ({ variable, probability, historicalMean, threshold, uni
                 <h3 className="card-title">Probabilidad de {config.label}</h3>
                 
                 <div className="probability-value">
-                    {probability}<span className="percent-sign">%</span>
+                    {/* --- MEJORA: Manejar el caso de probabilidad -1 (desde caché) --- */}
+                    {probability === -1 ? (
+                        <span style={{ fontSize: '1.8rem', fontWeight: '500', color: '#757575' }}>Desde Caché</span>
+                    ) : (
+                        <>{probability}<span className="percent-sign">%</span></>
+                    )}
                 </div>
                 
                 <div className="card-details">
@@ -78,6 +85,6 @@ const ProbabilityCard = ({ variable, probability, historicalMean, threshold, uni
             </div>
         </div>
     );
-};
+}; // <-- ESTA ES LA LLAVE QUE FALTABA
 
 export default ProbabilityCard;

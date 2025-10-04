@@ -3,8 +3,11 @@ import "./Chatbox.css";
 import { MdOutlineMessage } from "react-icons/md";
 import { IoMdSend } from "react-icons/io";
 
-// Apuntamos al backend en el puerto 3001
-const API_URL = "http://localhost:3001/api/chat";
+// --- MEJORA: URL de API dinámica para funcionar tanto en local como en red ---
+const isDevelopment = import.meta.env.DEV;
+const backendHostname = isDevelopment ? 'localhost' : window.location.hostname;
+const API_URL = `http://${backendHostname}:3001/api/chat`;
+
 
 const Chatbox = ({ location, date, variable }) => {
   const [isOpen, setIsOpen] = useState(false);
