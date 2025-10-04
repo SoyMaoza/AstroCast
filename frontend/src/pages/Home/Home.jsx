@@ -18,8 +18,11 @@ const API_URL = `http://${backendHostname}:3001/api/climate-probability`;
 const VARIABLES = [
     { value: 'calido', label: '☀️ Muy Cálido' },
     { value: 'frio', label: '🥶 Muy Frío' },
-    { value: 'humedo', label: '🌧️ Muy Húmedo' },
     { value: 'ventoso', label: '💨 Muy Ventoso' },
+    { value: 'humedo', label: '💧 Muy Húmedo' },
+    { value: 'lluvioso', label: '🌧️ Muy Lluvioso' },
+    { value: 'nevado', label: '❄️ Mucha Nieve' },
+    { value: 'nublado', label: '☁️ Muy Nublado' },
     { value: 'incomodo', label: '🥵 Muy Incómodo' },
     { value: 'polvo', label: '🌪️ Mucho Polvo' },
 ];
