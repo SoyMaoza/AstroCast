@@ -26,7 +26,7 @@ function initializeChat() {
     chat = ai.chats.create({
         model: modelName,
         config: {
-            systemInstruction: "Eres un asistente de chatbot amigable y servicial, diseñado para responder preguntas de forma concisa. Si te piden información de usuario o algo relacionado a ayuda, debes responder con un mensaje que incluya el hipervínculo en formato **Markdown**: [Página de Ayuda](http://localhost:5173/info). De preferencia que tus respuestas no sean tan largas, tienes permitido dar información sobre su ubicación si te la piden, solo los datos que tienes acceso. ",
+            systemInstruction: "Eres un asistente de chatbot amigable y servicial, diseñado para responder preguntas de forma concisa. Si te piden información de usuario o algo relacionado a ayuda, debes responder con un mensaje que incluya el hipervínculo en formato **Markdown**: [Página de Ayuda](http://localhost:5173/faq). De preferencia que tus respuestas no sean tan largas, tienes permitido dar información sobre su ubicación si te la piden, solo los datos que tienes acceso. ",
         },
     });
 }
@@ -276,15 +276,8 @@ async function getCoordinates(datasetUrl) {
 
     const lats = latLeaf.data;
     const lons = lonLeaf.data;
-    const text = buffer.toString();
-    const latMatch = text.match(/Float64 lat\[lat = (\d+)\];\s*([\s\S]*?)Float64 lon/);
-    const lonMatch = text.match(/Float64 lon\[lon = (\d+)\];\s*([\s\S]*?)Data:/);
-
-    if (!latMatch || !lonMatch) throw new Error("No se pudieron parsear las coordenadas del dataset.");
-
-    //const lats = latMatch[2].split(',').map(Number);
-    //const lons = lonMatch[2].split(',').map(Number);
-
+    
+    // El código obsoleto que usaba 'buffer' y expresiones regulares ha sido eliminado.
     const coords = { lats, lons };
     coordinateCache.set(datasetUrl, coords);
     return coords;
@@ -361,14 +354,22 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
 
     // 2. Iterar por todos los años disponibles (1980-2016 para esta colección)
     const startYear = 1980;
-    const endYear = 2020; // <-- CORRECCIÓN: Usar el rango estable y consistente (1980-2020) para evitar 404s en años recientes.
+    const endYear = new Date().getFullYear(); // Analizar hasta el año actual
     const yearPromises = [];
 
     for (let year = startYear; year <= endYear; year++) {
         const filePrefix = getMerra2FilePrefix(year); // <-- Usamos la nueva función
         const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
+
+        // --- MEJORA: Lógica para cambiar de colección para años recientes ---
+        // Los datos de 2021 en adelante están en una colección diferente.
+        let urlTemplate = config.datasetUrlTemplate;
+        if (year >= 2021) {
+            urlTemplate = urlTemplate.replace('M2T1NXSLV.5.12.4', 'M2T1NXSLV_5.12.4'); // Cambia el punto por guion bajo
+        }
+
         const datasetFileName = `MERRA2_${filePrefix}.tavg1_2d_${datasetType}_Nx.${year}${monthStr}${dayStr}.nc4`;
-        const baseDatasetUrl = `${config.datasetUrlTemplate}/${year}/${monthStr}/${datasetFileName}`;
+        const baseDatasetUrl = `${urlTemplate}/${year}/${monthStr}/${datasetFileName}`;
 
         // Función para obtener los datos de un año
         const fetchYearData = async (currentUrl) => {
@@ -441,7 +442,7 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
 // =================================================================
 app.post("/api/climate-probability", async (req, res) => {
     const { lat, lon, day, month, variable } = req.body;
-    const HISTORICAL_RANGE = "1980-2020"; // Rango de años para mostrar en la descripción
+    const HISTORICAL_RANGE = `1980-${new Date().getFullYear()}`; // Rango de años para mostrar en la descripción
 
     // --- MEJORA: Implementar lógica de caché con la base de datos ---
     try {
