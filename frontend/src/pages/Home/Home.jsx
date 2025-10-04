@@ -7,7 +7,12 @@ import Chatbox from '../../components/Chatbox';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-const API_URL = 'http://localhost:3001/api/climate-probability';
+// --- MEJORA: URL de API dinámica y robusta ---
+// Determina si estamos en un entorno de desarrollo local o en la red.
+// `import.meta.env.DEV` es una variable especial de Vite.
+const isDevelopment = import.meta.env.DEV;
+const backendHostname = isDevelopment ? 'localhost' : window.location.hostname;
+const API_URL = `http://${backendHostname}:3001/api/climate-probability`;
 
 // Variables climáticas
 const VARIABLES = [
