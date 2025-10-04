@@ -127,7 +127,7 @@ const ClimateDaySchema = new mongoose.Schema({
     month: { type: Number, required: true },
     lat: { type: Number, required: true },
     lon: { type: Number, required: true },
-    variable: { type: String, required: true, enum: ["calido", "frio", "humedo", "ventoso", "incomodo", "polvo"] },
+    variable: { type: String, required: true, enum: ["calido", "frio", "ventoso", "polvo", "humedo"] },
     probability: { type: Number, required: true },
     historicalMean: { type: Number, required: true },
     threshold: { type: Number, required: true },
@@ -192,6 +192,13 @@ const CONFIG_VARIABLES_NASA = {
         datasetUrlTemplate: MERRA2_AER_URL_TEMPLATE,
         unit: "1 (sin dimensión)",
         threshold: (stats) => stats.mean + 2.0 * stats.stdDev, // Para polvo, un umbral más extremo
+        isBelowThresholdWorse: false,
+    },
+    humedo: {
+        apiVariable: "QV2M",
+        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        unit: "kg/kg",
+        threshold: (stats) => stats.p90, // Usamos el percentil 90 como umbral de referencia
         isBelowThresholdWorse: false,
     },
 };
@@ -542,6 +549,9 @@ app.post("/api/climate-probability", async (req, res) => {
                 break;
             case 'polvo': // NUEVA ESCALA: 0 a 0.1 para una mejor percepción
                 probability = mapRange(stats.mean, 0, 0.1, 0, 100);
+                break;
+            case 'humedo': // ESCALA FINAL: 0.005 kg/kg a 0.020 kg/kg
+                probability = mapRange(stats.mean, 0.005, 0.020, 0, 100);
                 break;
             default:
                 // Fallback por si se añade una variable sin escala definida
