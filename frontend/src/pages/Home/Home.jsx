@@ -289,7 +289,7 @@ const HomePage = () => {
                     </div>
                 </div>
             )}
-
+            
             <Chatbox location={location} date={date} variable={variable} />
         </div>
     );

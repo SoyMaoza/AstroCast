@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 import Home from "./pages/Home/Home";
 import Faq from "./pages/faq/faq";
 
+
 function App() {
 
   return (
