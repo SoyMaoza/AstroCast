@@ -1,5 +1,3 @@
-// Chatbox.jsx (CÓDIGO COMPLETO Y FINAL)
-
 import React, { useState, useRef, useEffect } from "react";
 import "./Chatbox.css";
 import { MdOutlineMessage } from "react-icons/md";
@@ -22,18 +20,44 @@ const Chatbox = ({ location, date, variable }) => {
   const messagesEndRef = useRef(null);
 
   // --- ESTADOS DE WHATSAPP ---
-  const [isSharing, setIsSharing] = useState(false); // Muestra la interfaz de envío
-  const [whatsappNumber, setWhatsappNumber] = useState(""); // Guarda el número
+  const [isSharing, setIsSharing] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   // ----------------------------
 
-  // Efecto para hacer scroll automático
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  /**
+   * --- FUNCIÓN MODIFICADA ---
+   * Convierte texto a HTML. Los links ahora se abren en la misma pestaña.
+   * @param {string} text - El texto a formatear.
+   * @returns {string} - Un string con etiquetas HTML.
+   */
+  const formatMessageToHTML = (text) => {
+    let formattedText = text;
+
+    // 1. Convierte **negritas** a <strong>negritas</strong>
+    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // 2. Convierte links de Markdown [texto](url) a <a href="url">texto</a>
+    formattedText = formattedText.replace(
+      /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2">$1</a>' // Se quitó target="_blank"
+    );
+
+    // 3. Convierte links de texto plano (http://...) a hipervínculos clickeables.
+    const urlRegex = /(?<!href=")(?<!\]\()((https?:\/\/[^\s]+))/g;
+    formattedText = formattedText.replace(
+        urlRegex, 
+        '<a href="$1">$1</a>' // Se quitó target="_blank"
+    );
+    
+    return formattedText;
+  };
+
   const toggleChat = () => {
     setIsOpen(!isOpen);
-    // Si se cierra, salimos del modo compartir
     if (isOpen) setIsSharing(false);
   };
 
@@ -41,7 +65,6 @@ const Chatbox = ({ location, date, variable }) => {
     setInputValue(e.target.value);
   };
 
-  // --- LÓGICA DEL CHAT (Igual que la tuya) ---
   const handleSendMessage = async (e) => {
     e.preventDefault();
     const userMessage = inputValue.trim();
@@ -55,8 +78,6 @@ const Chatbox = ({ location, date, variable }) => {
     setIsLoading(true);
 
     try {
-      // --- MEJORA: Formatear la fecha y preparar el cuerpo de la petición ---
-      // Aseguramos que el mes y día tengan dos dígitos (ej: 1 -> "01")
       const formattedDate = `${String(date.month).padStart(2, '0')}-${String(
         date.day
       ).padStart(2, '0')}`;
@@ -68,7 +89,7 @@ const Chatbox = ({ location, date, variable }) => {
           message: userMessage,
           lat: location.lat,
           lon: location.lon,
-          date: formattedDate, // Formato "MM-DD"
+          date: formattedDate,
           variable: variable,
         }),
       });
@@ -101,48 +122,33 @@ const Chatbox = ({ location, date, variable }) => {
     }
   };
 
-  // --- LÓGICA DE WHATSAPP ---
-
   const formatMessagesForWhatsapp = () => {
     let formattedText = "🤖 Reporte de Asesor Astro (NASA):\n\n";
     messages.forEach(msg => {
-      // Incluimos ambos mensajes para tener el contexto
       if (msg.sender === "bot" || msg.sender === "user") {
-        // Reemplazamos saltos de línea y codificamos para URL
         const role = msg.sender === "bot" ? "Astro: " : "Yo: ";
-        formattedText += role + msg.text.replace(/\n/g, " ") + "\n";
+        const cleanText = msg.text.replace(/\*\*/g, "").replace(/\[(.*?)\]\(.*?\)/g, "$1");
+        formattedText += role + cleanText.replace(/\n/g, " ") + "\n";
       }
     });
-
     formattedText += "\n---\nGenerado por tu asistente del NASA Space Apps Challenge.";
-
     return encodeURIComponent(formattedText);
   };
 
   const handleWhatsappSend = (e) => {
-    e.preventDefault(); // Evita el submit del formulario si es necesario
-
+    e.preventDefault();
     if (!whatsappNumber || whatsappNumber.length < 8) {
       alert(
         "Por favor, introduce un número de WhatsApp válido (código de país + número, ej: 525512345678)."
       );
       return;
     }
-
     const messageText = formatMessagesForWhatsapp();
-
-    // Construye el enlace de WhatsApp (wa.me)
     const whatsappLink = `https://wa.me/${whatsappNumber}?text=${messageText}`;
-
-    // Abrir la aplicación de WhatsApp del usuario
     window.open(whatsappLink, "_blank");
-
-    // Resetear el modo de envío
     setIsSharing(false);
     setWhatsappNumber("");
   };
-
-  // --- FIN LÓGICA DE WHATSAPP ---
 
   return (
     <div className="chatbox-container">
@@ -157,7 +163,7 @@ const Chatbox = ({ location, date, variable }) => {
           <div className="chat-messages">
             {messages.map((msg, index) => (
               <div key={msg.id || index} className={`message ${msg.sender}`}>
-                <p>{msg.text}</p>
+                <p dangerouslySetInnerHTML={{ __html: formatMessageToHTML(msg.text) }} />
               </div>
             ))}
             {isLoading && (
@@ -170,7 +176,6 @@ const Chatbox = ({ location, date, variable }) => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* --- INTERFAZ DE COMPARTIR WHATSAPP (Aparece si isSharing es true) --- */}
           {isSharing ? (
             <form className="whatsapp-share-form" onSubmit={handleWhatsappSend}>
               <div className="whatsapp-share-content">
@@ -198,7 +203,6 @@ const Chatbox = ({ location, date, variable }) => {
             </form>
           ) : (
             <>
-              {/* --- Formulario de Entrada NORMAL (Aparece si isSharing es false) --- */}
               <form className="chat-input-form" onSubmit={handleSendMessage}>
                 <input
                   type="text"
@@ -211,7 +215,6 @@ const Chatbox = ({ location, date, variable }) => {
                   <IoMdSend />
                 </button>
               </form>
-              {/* --- Botón para activar el modo de compartir --- */}
               <footer className="chat-footer">
                 <button
                   onClick={() => setIsSharing(true)}
@@ -229,5 +232,6 @@ const Chatbox = ({ location, date, variable }) => {
       </button>
     </div>
   );
-}
+};
+
 export default Chatbox;

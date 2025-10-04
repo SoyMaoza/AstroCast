@@ -18,8 +18,8 @@ const Navbar = () => {
                 <Link to="/" className={`nav-link ${isActive('/') ? 'active' : ''}`}>
                     Dashboard
                 </Link>
-                <Link to="/info" className={`nav-link ${isActive('/info') ? 'active' : ''}`}>
-                    Recursos NASA
+                <Link to="/faq" className={`nav-link ${isActive('/info') ? 'active' : ''}`}>
+                    FAQ
                 </Link>
                 <Link to="/equipo" className={`nav-link ${isActive('/equipo') ? 'active' : ''}`}>
                     Equipo
