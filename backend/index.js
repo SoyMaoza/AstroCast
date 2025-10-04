@@ -127,7 +127,7 @@ const ClimateDaySchema = new mongoose.Schema({
     month: { type: Number, required: true },
     lat: { type: Number, required: true },
     lon: { type: Number, required: true },
-    variable: { type: String, required: true, enum: ["calido", "frio", "ventoso", "polvo", "humedo"] },
+    variable: { type: String, required: true, enum: ["calido", "frio", "ventoso", "polvo", "humedo", "incomodo", "lluvioso", "nevado", "nublado"] },
     probability: { type: Number, required: true },
     historicalMean: { type: Number, required: true },
     threshold: { type: Number, required: true },
@@ -199,6 +199,34 @@ const CONFIG_VARIABLES_NASA = {
         datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
         unit: "kg/kg",
         threshold: (stats) => stats.p90, // Usamos el percentil 90 como umbral de referencia
+        isBelowThresholdWorse: false,
+    },
+    incomodo: {
+        apiVariable: ["T2M", "QV2M", "PS"], // Necesita Temperatura, Humedad Específica y Presión
+        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        unit: "°C (Índice de Calor)",
+        threshold: (stats) => stats.p90,
+        isBelowThresholdWorse: false,
+    },
+    lluvioso: {
+        apiVariable: "PRECTOT", // Precipitación Total
+        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        unit: "mm/día",
+        threshold: (stats) => stats.p90,
+        isBelowThresholdWorse: false,
+    },
+    nevado: {
+        apiVariable: "PRECSN", // Precipitación de Nieve
+        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        unit: "mm/día",
+        threshold: (stats) => stats.p90,
+        isBelowThresholdWorse: false,
+    },
+    nublado: {
+        apiVariable: "CLDTOT", // Fracción Total de Nubes
+        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        unit: "%", // La API lo da como fracción (0-1), lo convertiremos
+        threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
     },
 };
@@ -382,22 +410,57 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
 
         const datasetFileName = `MERRA2_${filePrefix}.tavg1_2d_${datasetType}_Nx.${year}${monthStr}${dayStr}.nc4`;
         const baseDatasetUrl = `${urlTemplate}/${year}/${monthStr}/${datasetFileName}`;
-
+        
         // Función para obtener los datos de un año
         const fetchYearData = async (currentUrl) => {
             const fetchData = async (url) => {
-                if (Array.isArray(config.apiVariable)) { // Caso 'ventoso'
+                if (Array.isArray(config.apiVariable)) {
+                    // --- LÓGICA PARA MÚLTIPLES VARIABLES (ventoso, incomodo) ---
+                    const variableUrls = config.apiVariable.map(v => encodeURI(`${url}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
+                    const responses = await Promise.all(variableUrls.map(vUrl => fetchWithCurl(vUrl, true)));
+
+                    const dataArrays = responses.map((response, i) => {
+                        const leaf = response.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable[i]);
+                        if (!leaf?.data) throw new Error(`Datos para la variable ${config.apiVariable[i]} incompletos.`);
+                        return leaf.data.flat(Infinity);
+                    });
+
+                    console.log(`[NASA API] Descarga para el año ${year} completada. URLs: ${variableUrls.join(', ')}`);
+
+                    if (variableName === 'ventoso') {
+                        const [u10mValues, v10mValues] = dataArrays;
+                        const windData = u10mValues.map((u, i) => Math.sqrt(u * u + v10mValues[i] * v10mValues[i]));
+                        console.log(`       Valores (viento): [${windData.map(v => v.toFixed(2)).join(', ')}]`);
+                        return windData;
+                    }
+
+                    if (variableName === 'incomodo') {
+                        const [t2mValues, qv2mValues, psValues] = dataArrays;
+                        const heatIndexData = t2mValues.map((t_k, i) => {
+                            const t_c = t_k - 273.15; // Temperatura en Celsius
+                            const qv = qv2mValues[i]; // Humedad específica (kg/kg)
+                            const p = psValues[i];   // Presión (Pa)
+
+                            // 1. Calcular presión de vapor de saturación (e_s) en hPa
+                            const e_s = 6.1094 * Math.exp((17.625 * t_c) / (t_c + 243.04));
+                            // 2. Calcular presión de vapor (e) en hPa
+                            const e = (qv * (p / 100)) / (0.622 + 0.378 * qv);
+                            // 3. Calcular Humedad Relativa (RH)
+                            const rh = Math.min(100, (e / e_s) * 100);
+
+                            // 4. Calcular Índice de Calor (HI) - fórmula simple para T > 26.7°C
+                            if (t_c < 26.7) return t_c; // Por debajo de ~27°C, el HI es igual a la temperatura
+                            const t_f = t_c * 1.8 + 32; // Convertir a Fahrenheit para la fórmula
+                            let hi_f = -42.379 + 2.04901523 * t_f + 10.14333127 * rh - 0.22475541 * t_f * rh - 6.83783e-3 * t_f * t_f - 5.481717e-2 * rh * rh + 1.22874e-3 * t_f * t_f * rh + 8.5282e-4 * t_f * rh * rh - 1.99e-6 * t_f * t_f * rh * rh;
+                            return (hi_f - 32) / 1.8; // Convertir de vuelta a Celsius
+                        });
+                        console.log(`       Valores (Índice de Calor): [${heatIndexData.map(v => v.toFixed(2)).join(', ')}]`);
+                        return heatIndexData;
+                    }
+
+                    // Fallback por si se añade otra variable de array
                     const [u10mUrl, v10mUrl] = config.apiVariable.map(v => encodeURI(`${url}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
-                    const [u10mResponse, v10mResponse] = await Promise.all([fetchWithCurl(u10mUrl, true), fetchWithCurl(v10mUrl, true)]);
-                    const u10mLeaf = u10mResponse.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable[0]);
-                    const v10mLeaf = v10mResponse.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable[1]);
-                    if (!u10mLeaf?.data || !v10mLeaf?.data) throw new Error("Datos de viento incompletos");
-                    const u10mValues = u10mLeaf.data.flat(Infinity);
-                    const v10mValues = v10mLeaf.data.flat(Infinity);
-                    const windData = u10mValues.map((u, i) => Math.sqrt(u * u + v10mValues[i] * v10mValues[i]));
-                    console.log(`[NASA API] Descarga para el año ${year} completada. URLs: ${u10mUrl}, ${v10mUrl}`);
-                    console.log(`       Valores (viento): [${windData.map(v => v.toFixed(2)).join(', ')}]`);
-                    return windData;
+                    return [];
                 } else { // Caso de variable simple
                     const dataUrl = encodeURI(`${url}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`);
                     const dataResponse = await fetchWithCurl(dataUrl, true);
@@ -422,8 +485,8 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
                         console.error(`[ERROR] El reintento con MERRA2_401 también falló para el año ${year}. Saltando...`);
                         // --- MEJORA: Loguear URLs específicas en el fallo del reintento ---
                         if (Array.isArray(config.apiVariable)) {
-                            const [failedU, failedV] = config.apiVariable.map(v => encodeURI(`${retryUrl}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
-                            console.error(`       URLs que fallaron: ${failedU}, ${failedV}`);
+                            const failedUrls = config.apiVariable.map(v => encodeURI(`${retryUrl}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
+                            console.error(`       URLs que fallaron: ${failedUrls.join(', ')}`);
                         } else {
                             console.error(`       URL que falló: ${encodeURI(`${retryUrl}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`)}`);
                         }
@@ -550,8 +613,21 @@ app.post("/api/climate-probability", async (req, res) => {
             case 'polvo': // NUEVA ESCALA: 0 a 0.1 para una mejor percepción
                 probability = mapRange(stats.mean, 0, 0.1, 0, 100);
                 break;
-            case 'humedo': // ESCALA FINAL: 0.005 kg/kg a 0.020 kg/kg
+            case 'humedo': // Escala de 0.005 kg/kg a 0.020 kg/kg
                 probability = mapRange(stats.mean, 0.005, 0.020, 0, 100);
+                break;
+            case 'incomodo': // Escala de Índice de Calor de 27°C a 41°C
+                probability = mapRange(stats.mean, 27, 41, 0, 100);
+                break;
+            // --- VARIABLES NUEVAS (aún sin escala definida) ---
+            case 'lluvioso':
+                probability = 0; // Lógica pendiente
+                break;
+            case 'nevado':
+                probability = 0; // Lógica pendiente
+                break;
+            case 'nublado':
+                probability = 0; // Lógica pendiente
                 break;
             default:
                 // Fallback por si se añade una variable sin escala definida
