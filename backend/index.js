@@ -1,122 +1,119 @@
-
 // Usando CommonJS:
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
 const dotenv = require('dotenv');
+// NOTE: Se requiere que este archivo exista en tu estructura:
 const { obtenerEstadisticasHistoricas } = require('./data/Clima.js');
+const { execFile } = require('child_process');
 dotenv.config();
 const mongoose = require("mongoose");
-const axios = require("axios");
 const app = express();
 const port = 3001;
 
 // Configurar middlewares
-app.use(cors()); // Permite peticiones desde el frontend de React (puerto 5173 por defecto)
-app.use(express.json()); // Necesario para leer el cuerpo JSON de las peticiones POST
+app.use(cors());
+app.use(express.json());
 
 // --- Configuración de Gemini ---
-// if (!API_KEY || API_KEY === "AIzaSyCt9sMxyaCMZ0d59Xd2FtZI8QnMJ6bYqCE") {
-    //     console.error("Error: Por favor, actualiza la GEMINI_API_KEY en el archivo .env");
-    //     process.exit(1);
-    // }
 const API_KEY = process.env.API_KEY;
-    
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
-    const modelName = "gemini-2.5-flash";
-    
-    // Variable global para mantener la sesión de chat con el historial
-    let chat = null;
-    
-    // Función para inicializar la sesión de chat
-    function initializeChat() {
+const ai = new GoogleGenAI({ apiKey: API_KEY });
+const modelName = "gemini-1.5-flash";
+let chat = null;
+
+function initializeChat() {
     console.log(`Inicializando sesión de chat con el modelo ${modelName}...`);
     chat = ai.chats.create({
         model: modelName,
         config: {
-            // Instrucción de sistema: define el rol del chatbot
-            systemInstruction: "Eres un asistente de chatbot amigable y servicial, diseñado para responder preguntas de forma concisa, Si te piden informacion de usuario o algo relacionado a ayuda redireccionalos a la pagina de ayuda: 'http://localhost:5173/info'.De preferencia que tus respuestas no sean tan largas, tienes permitido dar información sobre su ubicacion si te la piden, solo los datos que tienes acceso. ",
+            systemInstruction: "Eres un asistente de chatbot amigable y servicial, diseñado para responder preguntas de forma concisa. Si te piden información de usuario o algo relacionado a ayuda, debes responder con un mensaje que incluya el hipervínculo en formato **Markdown**: [Página de Ayuda](http://localhost:5173/info). De preferencia que tus respuestas no sean tan largas, tienes permitido dar información sobre su ubicación si te la piden, solo los datos que tienes acceso. ",
         },
     });
 }
-
-// Inicializar la sesión de chat al iniciar el servidor
 initializeChat();
 
 // --- Ruta API de Chat ---
 app.post('/api/chat', async (req, res) => {
-    // --- MEJORA: Aceptar lat, lon y date desde el frontend ---
+    // --- INICIO DE NUEVOS LOGS DE DIAGNÓSTICO ---
+    console.log("\n\n--- Nueva Petición a /api/chat ---");
+    console.log("Cuerpo de la petición recibido:", req.body);
+    // --- FIN DE NUEVOS LOGS DE DIAGNÓSTICO ---
+
     const { message, lat, lon, date, variable } = req.body;
-    
+
     if (!message) {
+        console.log("❌ Error: El mensaje es vacío o no existe.");
         return res.status(400).json({ error: 'El mensaje es requerido.' });
     }
-    
+
     try {
-        // --- MEJORA DEFINITIVA: Detectar si el usuario pide un resumen de su propia consulta ---
-        const pideResumenConsulta = (lat && lon && date) && 
-        (message.toLowerCase().includes('mi información') ||
-        message.toLowerCase().includes('mis datos') ||
-        message.toLowerCase().includes('mi latitud') ||
-        message.toLowerCase().includes('dame la informacion'));
-        
+        const lowerCaseMessage = message.toLowerCase();
+        console.log("Mensaje en minúsculas para análisis:", `"${lowerCaseMessage}"`); // Log para ver el mensaje
+
+        const esConsultaAyuda = (
+            lowerCaseMessage.includes('ayuda') ||
+            lowerCaseMessage.includes('info') ||
+            lowerCaseMessage.includes('soporte') ||
+            lowerCaseMessage.includes('usuario') ||
+            lowerCaseMessage.includes('compartir') ||
+            lowerCaseMessage.includes('historial')
+        );
+
+        if (esConsultaAyuda) {
+            console.log("✅ ¡REGLA DE AYUDA ACTIVADA! Enviando respuesta con hipervínculo.");
+            const markdownResponse = "Para más información sobre la aplicación o para compartir tu historial de chat, por favor visita nuestra **[Página de Ayuda](http://localhost:5173/info)**.";
+            return res.json({ text: markdownResponse });
+        }
+
+        console.log("ℹ️ La regla de ayuda no se activó. Procesando con otras lógicas o con IA...");
+
+        // --- Lógica de Resumen de Consulta ---
+        const pideResumenConsulta = (lat && lon && date) &&
+        (lowerCaseMessage.includes('mi información') ||
+        lowerCaseMessage.includes('mis datos') ||
+        lowerCaseMessage.includes('mi latitud') ||
+        lowerCaseMessage.includes('dame la informacion'));
+
         if (pideResumenConsulta) {
-            console.log("Detectada solicitud de resumen de consulta.");
+            console.log("✅ Lógica de Resumen activada.");
             const textoRespuesta = `¡Claro! Aquí están los datos de la consulta que tienes seleccionada:\n\n- **Ubicación:**\n  - Latitud: ${lat}\n  - Longitud: ${lon}\n- **Fecha seleccionada:**\n  - Mes: ${date.split('-')[0]}\n  - Día: ${date.split('-')[1]}\n- **Condición a Analizar:** ${variable || 'No seleccionada'}\n\nSi quieres que analice el clima para estos datos, solo pregunta algo como: "dime el pronóstico del clima".`;
             return res.json({ text: textoRespuesta });
         }
-        
-        
-        // --- MEJORA: Lógica de clima más robusta ---
-        // Si se envían lat, lon y date, asumimos que es una consulta de clima.
-        const esConsultaClima = (lat && lon && date) && 
-        (message.toLowerCase().includes('clima') || 
-        message.toLowerCase().includes('pronóstico') ||
-        message.toLowerCase().includes('analiza') || // Añadimos más palabras clave
-        message.toLowerCase().includes('dime'));
-        
+
+        // --- Lógica de Clima ---
+        const esConsultaClima = (lat && lon && date) &&
+        (lowerCaseMessage.includes('clima') ||
+        lowerCaseMessage.includes('pronóstico') ||
+        lowerCaseMessage.includes('analiza') ||
+        lowerCaseMessage.includes('dime'));
+
+        let responseText;
+
         if (esConsultaClima) {
-            console.log("Detectada consulta de clima. Obteniendo datos históricos...");
-            
-            // Usamos la fecha y ubicación proporcionadas por el usuario
-            const diaDelAnio = date; // Formato esperado "MM-DD"
-            const anioActual = new Date().getFullYear();
-            const ubicacion = { lat: parseFloat(lat), lon: parseFloat(lon) };
-            
-            // Obtenemos las estadísticas de los últimos 5 años
-            const estadisticas = await obtenerEstadisticasHistoricas(ubicacion, diaDelAnio, anioActual - 5, anioActual - 1);
-            
-            // Generamos el resumen de texto que antes se imprimía en consola
+            console.log("✅ Lógica de Clima activada.");
+            const estadisticas = await obtenerEstadisticasHistoricas({ lat: parseFloat(lat), lon: parseFloat(lon) }, date, new Date().getFullYear() - 5, new Date().getFullYear() - 1);
             const resumenDatos = estadisticas.generarTextoResumen();
-            
-            console.log("Datos para Gemini:", resumenDatos);
-            
-            // Creamos un mensaje mejorado para Gemini, dándole los datos y pidiéndole que los explique.
-            const promptMejorado = `
-            Basándote en los siguientes datos históricos para la ubicación con latitud ${lat} y longitud ${lon} en la fecha ${date}, 
-            responde a la pregunta del usuario de una manera amigable y conversacional.
-            Explica qué significan estas probabilidades. No menciones los años analizados a menos que te lo pregunten.
-            
-            Datos del Análisis Histórico:
-            ${resumenDatos}
-            
-            Pregunta del usuario: "${message}"
-            `;
-            
+            const promptMejorado = `Basándote en los siguientes datos históricos para la ubicación con latitud ${lat} y longitud ${lon} en la fecha ${date}, responde a la pregunta del usuario de una manera amigable y conversacional. Explica qué significan estas probabilidades. No menciones los años analizados a menos que te lo pregunten.\n\nDatos del Análisis Histórico:\n${resumenDatos}\n\nPregunta del usuario: "${message}"`;
             const response = await chat.sendMessage({ message: promptMejorado });
-            return res.json({ text: response.text });
+            responseText = response.text;
+        } else {
+            console.log("🤖 Enviando mensaje a la IA de Gemini...");
+            const response = await chat.sendMessage({ message: message });
+            responseText = response.text;
         }
-        
-        // Si no es una consulta de clima, procedemos con la lógica de chat normal.
-        const response = await chat.sendMessage({ message: message });
-        return res.json({ text: response.text });
-        
+
+        return res.json({ text: responseText });
+
     } catch (error) {
-        console.error('Error al comunicarse con la API de Gemini:', error);
+        console.error('❌ Error al comunicarse con la API de Gemini:', error);
         res.status(500).json({ error: 'Error interno del servidor al procesar el chat.' });
     }
 });
 
+
+// =================================================================
+// EL RESTO DEL CÓDIGO PERMANECE IGUAL
+// =================================================================
 
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("✅ Conectado a MongoDB Atlas"))
@@ -124,7 +121,6 @@ mongoose.connect(process.env.MONGO_URI)
 
 // =================================================================
 //                   ESQUEMA Y MODELO DE MONGODB
-// (Se usa para guardar los resultados y tener un historial)
 // =================================================================
 const ClimateDaySchema = new mongoose.Schema({
     day: { type: Number, required: true },
@@ -154,20 +150,17 @@ const CONFIG_VARIABLES_NASA = {
         apiVariable: "T2M",
         datasetUrl: MERRA2_SLV_URL,
         unit: "K",
-        // El umbral se define como el percentil 90 histórico para ese día.
         threshold: (stats) => stats.p90,
-        isBelowThresholdWorse: false, // Es peor si está POR ENCIMA del umbral.
+        isBelowThresholdWorse: false,
     },
     frio: {
         apiVariable: "T2M",
         datasetUrl: MERRA2_SLV_URL,
         unit: "K",
-        // El umbral se define como el percentil 10 histórico.
         threshold: (stats) => stats.p10,
-        isBelowThresholdWorse: true, // Es peor si está POR DEBAJO del umbral.
+        isBelowThresholdWorse: true,
     },
     ventoso: {
-        // Esta es una variable compuesta
         apiVariable: ["U10M", "V10M"],
         datasetUrl: MERRA2_SLV_URL,
         unit: "m/s",
@@ -181,8 +174,6 @@ const CONFIG_VARIABLES_NASA = {
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
     },
-    // NOTA: "húmedo" e "incómodo" requieren datasets diferentes o cálculos más complejos
-    // que se pueden añadir más tarde. Se omiten por ahora para centrarse en MERRA-2.
 };
 
 // =================================================================
@@ -194,23 +185,14 @@ const coordinateCache = new Map();
 //                      FUNCIONES HELPERS
 // =================================================================
 
-/**
- * Realiza una petición GET usando curl.exe para evitar problemas de autenticación de axios.
- * @param {string} url - La URL a la que se hará la petición.
- * @param {boolean} isJson - Si se espera una respuesta JSON (texto) o binaria.
- * @returns {Promise<Buffer|object>} - Los datos de la respuesta.
-*/
 function fetchWithCurl(url, isJson = false) {
     return new Promise((resolve, reject) => {
-        // -n: usa _netrc; -L: sigue redirecciones; -k: ignora errores de certificado.
-        // -c y -b: usan un archivo de cookies para mantener la sesión a través de las redirecciones.
         const cookieFile = 'nasa-cookies.txt';
         const args = ['-n', '-L', '-k', '-c', cookieFile, '-b', cookieFile, url];
         const options = { encoding: isJson ? 'utf8' : 'buffer', maxBuffer: 1024 * 1024 * 50 };
-        
+
         execFile('curl.exe', args, options, (error, stdout, stderr) => {
             if (error) {
-                // Limpiamos el mensaje de error para que sea más legible.
                 const cleanStderr = stderr.toString().split('\n').filter(line => !line.startsWith('  % Total')).join('\n');
                 return reject(new Error(`Fallo en curl: ${cleanStderr || error.message}`));
             }
@@ -219,12 +201,6 @@ function fetchWithCurl(url, isJson = false) {
     });
 }
 
-/**
- * Encuentra el índice del valor más cercano en un array.
- * @param {number} target El valor a buscar (ej. latitud del usuario).
- * @param {number[]} arr El array de coordenadas del dataset.
- * @returns {number} El índice del valor más cercano.
-*/
 function findClosestIndex(target, arr) {
     let closestIndex = 0;
     let minDiff = Math.abs(target - arr[0]);
@@ -238,66 +214,52 @@ function findClosestIndex(target, arr) {
     return closestIndex;
 }
 
-/**
- * Obtiene las coordenadas (lat, lon) de un dataset y las guarda en caché.
- * @param {string} datasetUrl La URL base del dataset de OPeNDAP.
- * @returns {Promise<{lats: number[], lons: number[]}>}
-*/
 async function getCoordinates(datasetUrl) {
     if (coordinateCache.has(datasetUrl)) {
         console.log(`[Cache] Coordenadas obtenidas de la caché para ${datasetUrl.slice(-20)}`);
         return coordinateCache.get(datasetUrl);
     }
-    
+
     console.log(`[NASA API] Obteniendo coordenadas para ${datasetUrl.slice(-20)}`);
     const coordUrl = `${datasetUrl}.dods?lat,lon`;
     const buffer = await fetchWithCurl(coordUrl, false);
-    
-    // La respuesta .dods es texto, necesitamos parsearlo para extraer los datos.
+
     const text = buffer.toString();
     const latMatch = text.match(/Float64 lat\[lat = (\d+)\];\s*([\s\S]*?)Float64 lon/);
     const lonMatch = text.match(/Float64 lon\[lon = (\d+)\];\s*([\s\S]*?)Data:/);
-    
+
     if (!latMatch || !lonMatch) throw new Error("No se pudieron parsear las coordenadas del dataset.");
-    
+
     const lats = latMatch[2].split(',').map(Number);
     const lons = lonMatch[2].split(',').map(Number);
-    
+
     const coords = { lats, lons };
     coordinateCache.set(datasetUrl, coords);
     return coords;
 }
 
-/**
- * Calcula estadísticas para un día específico a partir de una serie de tiempo completa.
- * @param {number[]} timeSeries - Array de valores de la variable (ej. temperaturas).
- * @param {number[]} timeValues - Array de valores de tiempo (minutos desde 1980-01-01).
- * @param {number} day - Día del mes (1-31).
- * @param {number} month - Mes del año (1-12).
- * @returns {object} Objeto con media, p10, p90 y valores del día.
-*/
 function calculateStatistics(timeSeries, timeValues, day, month) {
     const baseDate = new Date('1980-01-01T00:30:00Z');
     const dailyValues = [];
-    
+
     for (let i = 0; i < timeValues.length; i++) {
         const currentDate = new Date(baseDate.getTime() + timeValues[i] * 60000);
         if (currentDate.getUTCMonth() + 1 === month && currentDate.getUTCDate() === day) {
-            if (isFinite(timeSeries[i])) { // Asegurarse de que no es NaN o Infinity
+            if (isFinite(timeSeries[i])) {
                 dailyValues.push(timeSeries[i]);
             }
         }
     }
-    
+
     if (dailyValues.length === 0) {
         throw new Error(`No se encontraron datos históricos para la fecha ${day}/${month}.`);
     }
-    
+
     dailyValues.sort((a, b) => a - b);
     const mean = dailyValues.reduce((a, b) => a + b, 0) / dailyValues.length;
     const p10 = dailyValues[Math.floor(dailyValues.length * 0.10)];
     const p90 = dailyValues[Math.floor(dailyValues.length * 0.90)];
-    
+
     return { mean, p10, p90, values: dailyValues };
 }
 
@@ -306,36 +268,33 @@ function calculateStatistics(timeSeries, timeValues, day, month) {
 // =================================================================
 app.post("/api/climate-probability", async (req, res) => {
     const { lat, lon, day, month, variable } = req.body;
-    
+
     try {
         const config = CONFIG_VARIABLES_NASA[variable];
         if (!config) {
             return res.status(400).json({ success: false, message: `Variable '${variable}' no soportada.` });
         }
-        
+
         console.log(`\n[Request] Procesando: ${variable} para ${day}/${month} en (Lat:${lat}, Lon:${lon})`);
-        
-        // 1. Obtener coordenadas y encontrar índices
+
         const { lats, lons } = await getCoordinates(config.datasetUrl);
         const latIndex = findClosestIndex(lat, lats);
         const lonIndex = findClosestIndex(lon, lons);
         console.log(`[Index] Índices encontrados -> Lat: ${latIndex}, Lon: ${lonIndex}`);
-        
-        // 2. Obtener la serie de tiempo de la(s) variable(s)
+
         let timeSeries;
         const timeUrl = `${config.datasetUrl}.json?time`;
         const timeResponse = await fetchWithCurl(timeUrl, true);
         const timeValues = timeResponse.time;
-        
-        if (Array.isArray(config.apiVariable)) { // Caso especial para 'ventoso'
+
+        if (Array.isArray(config.apiVariable)) {
             console.log(`[NASA API] Obteniendo series para ${config.apiVariable.join(', ')}...`);
-            const [u10mUrl, v10mUrl] = config.apiVariable.map(v => 
+            const [u10mUrl, v10mUrl] = config.apiVariable.map(v =>
                 `${config.datasetUrl}.json?${v}[0:1:${timeValues.length-1}][${latIndex}][${lonIndex}]`
             );
             const [u10mResponse, v10mResponse] = await Promise.all([ fetchWithCurl(u10mUrl, true), fetchWithCurl(v10mUrl, true) ]);
             const u10mValues = u10mResponse[config.apiVariable[0]];
             const v10mValues = v10mResponse[config.apiVariable[1]];
-            // Calcular la magnitud del vector del viento
             timeSeries = u10mValues.map((u, i) => Math.sqrt(u*u + v10mValues[i]*v10mValues[i]));
         } else {
             console.log(`[NASA API] Obteniendo serie para ${config.apiVariable}...`);
@@ -343,12 +302,10 @@ app.post("/api/climate-probability", async (req, res) => {
             const dataResponse = await fetchWithCurl(dataUrl, true);
             timeSeries = dataResponse[config.apiVariable];
         }
-        
-        // 3. Calcular estadísticas históricas para el día solicitado
+
         const stats = calculateStatistics(timeSeries, timeValues, parseInt(day), parseInt(month));
         const thresholdValue = config.threshold(stats);
-        
-        // 4. Calcular la probabilidad
+
         let adverseDays = 0;
         if (config.isBelowThresholdWorse) {
             adverseDays = stats.values.filter(v => v < thresholdValue).length;
@@ -356,8 +313,7 @@ app.post("/api/climate-probability", async (req, res) => {
             adverseDays = stats.values.filter(v => v > thresholdValue).length;
         }
         const probability = Math.round((adverseDays / stats.values.length) * 100);
-        
-        // 5. Formatear y enviar respuesta
+
         const result = {
             success: true,
             location: `(Lat: ${lats[latIndex].toFixed(2)}, Lon: ${lons[lonIndex].toFixed(2)})`,
@@ -370,8 +326,7 @@ app.post("/api/climate-probability", async (req, res) => {
             detailDescription: `Probabilidad del ${probability}% de que la condición '${variable}' exceda el umbral histórico (${parseFloat(thresholdValue.toFixed(2))} ${config.unit}) para esta fecha y ubicación, basado en datos de 1980-presente.`,
             downloadLink: config.datasetUrl
         };
-        
-        // 6. Guardar en DB (opcional, pero bueno para caché)
+
         try {
             const record = new ClimateDay({ ...result, lat, lon, day, month });
             await record.save();
@@ -379,9 +334,9 @@ app.post("/api/climate-probability", async (req, res) => {
         } catch (dbError) {
             console.error("[DB] Error al guardar el resultado:", dbError.message);
         }
-        
+
         res.json(result);
-        
+
     } catch (error) {
         console.error("❌ ERROR FATAL EN LA RUTA API:", error.message);
         if (error.response?.status === 401) {
@@ -402,5 +357,4 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
     console.log(`\n🚀 Servidor de API de AstroCast corriendo en http://localhost:${port}`);
     console.log(`   Asegúrate de que tus variables de entorno (.env) están configuradas.`);
-    console.log(`   ¡No olvides ejecutar 'npm run dev' en otra terminal para el frontend!\n`);
 });
