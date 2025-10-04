@@ -242,17 +242,24 @@ const coordinateCache = new Map();
 
 function fetchWithCurl(url, isJson = false) {
     return new Promise((resolve, reject) => {
-        // -n: usa _netrc; -L: sigue redirecciones; -k: ignora errores de certificado.
-        // --netrc-file: especifica la ruta al archivo de credenciales.
-        // -c y -b: usan un archivo de cookies para mantener la sesión.
-        // Usamos path.join para construir rutas absolutas y evitar problemas.
         const path = require('path');
         const cookieFile = path.join(__dirname, 'nasa-cookies.txt');
-        const netrcFile = path.join(process.env.USERPROFILE, '_netrc');
+        
+        // ======================================================= //
+        // AQUÍ ESTÁ EL CAMBIO MÁS IMPORTANTE
+        // Ahora busca .netrc en la carpeta del proyecto (backend/)
+        // ======================================================= //
+        const netrcFile = path.join(__dirname, '.netrc');
+
         const args = ['-L', '-k', '--netrc-file', netrcFile, '-c', cookieFile, '-b', cookieFile, url];
         const options = { encoding: isJson ? 'utf8' : 'buffer', maxBuffer: 1024 * 1024 * 50 };
 
-        execFile('curl.exe', args, options, (error, stdout, stderr) => {
+        // ======================================================= //
+        //              AQUÍ ESTÁ LA CORRECCIÓN
+        // Se cambió 'curl.exe' por 'curl' para que funcione en
+        // macOS, Linux y Windows.
+        // ======================================================= //
+        execFile('curl', args, options, (error, stdout, stderr) => {
             if (error) {
                 const cleanStderr = stderr.toString().split('\n').filter(line => !line.startsWith('  % Total')).join('\n');
                 return reject(new Error(`Fallo en curl: ${cleanStderr || error.message}`));
@@ -262,7 +269,6 @@ function fetchWithCurl(url, isJson = false) {
                 try {
                     resolve(JSON.parse(stdout));
                 } catch (jsonError) {
-                    // Check if the output looks like HTML, which often indicates an authentication issue
                     if (stdout.trim().startsWith('<!DOCTYPE html')) {
                         console.error("DEBUG: Curl output was HTML, likely an authentication or server error. First 500 chars:", stdout.slice(0, 500) + "...");
                         return reject(new Error(`Error de parseo JSON: La respuesta de la API de NASA no es JSON válido. Parece ser una página HTML (posiblemente de login o error). Por favor, verifica tus credenciales de Earthdata Login en el archivo .netrc.`));
@@ -275,6 +281,9 @@ function fetchWithCurl(url, isJson = false) {
         });
     });
 }
+
+
+
 
 function findClosestIndex(target, arr) {
     let closestIndex = 0;
