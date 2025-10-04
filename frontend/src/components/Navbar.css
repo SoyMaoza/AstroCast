@@ -5,12 +5,10 @@
     justify-content: space-between;
     align-items: center;
     padding: 15px 30px;
-
     background-color: #FFFFFF;
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-
-    position: fixed;
+    position: relative;
     top: 20px;
     z-index: 1001; /* Aumentado para que esté por encima de los controles del mapa (que tienen 1000) */
     left: 50%;
