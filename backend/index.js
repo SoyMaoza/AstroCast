@@ -161,6 +161,7 @@ const HistoricalStat = mongoose.model("HistoricalStat", HistoricalStatSchema);
 // Se usarán como plantillas para construir la URL final.
 const MERRA2_SLV_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXSLV.5.12.4";
 const MERRA2_AER_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXAER.5.12.4";
+const GPM_IMERG_URL_TEMPLATE = "https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDF.07"; // CORRECCIÓN: GPM no usa el endpoint /hyrax/
 
 
 const CONFIG_VARIABLES_NASA = {
@@ -209,8 +210,9 @@ const CONFIG_VARIABLES_NASA = {
         isBelowThresholdWorse: false,
     },
     lluvioso: {
-        apiVariable: "PRECTOT", // Precipitación Total
-        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        apiVariable: "precipitation", // CORRECCIÓN FINAL: La variable en GPM IMERG V7 es 'precipitation'.
+        datasetUrlTemplate: GPM_IMERG_URL_TEMPLATE,
+        startYear: 2000, // Los datos de GPM IMERG comienzan en junio de 2000
         unit: "mm/día",
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
@@ -298,24 +300,29 @@ async function getCoordinates(datasetUrl) {
     console.log(`[NASA API] Obteniendo coordenadas para ${datasetUrl.slice(-20)}`);
     // --- MEJORA: Usar la respuesta .json en lugar de .dods para evitar parseo manual ---
     const coordUrl = `${datasetUrl}.json?lat,lon`;
-    const coordResponse = await fetchWithCurl(coordUrl, true); // true para que parsee como JSON
+    try {
+        const coordResponse = await fetchWithCurl(coordUrl, true); // true para que parsee como JSON
 
-    // --- CORRECCIÓN: La API de NASA devuelve las coordenadas dentro de un array 'leaves' ---
-    const latLeaf = coordResponse.leaves?.find(leaf => leaf.name === 'lat');
-    const lonLeaf = coordResponse.leaves?.find(leaf => leaf.name === 'lon');
+        // --- MEJORA: La estructura de GPM y MERRA-2 es diferente ---
+        const latLeaf = coordResponse.leaves?.find(leaf => leaf.name === 'lat') || coordResponse.nodes?.find(n => n.name === 'Grid')?.leaves?.find(l => l.name === 'lat');
+        const lonLeaf = coordResponse.leaves?.find(leaf => leaf.name === 'lon') || coordResponse.nodes?.find(n => n.name === 'Grid')?.leaves?.find(l => l.name === 'lon');
 
-    if (!latLeaf || !lonLeaf || !latLeaf.data || !lonLeaf.data) {
-        console.error("[DEBUG] Estructura de respuesta de coordenadas inesperada:", JSON.stringify(coordResponse, null, 2));
-        throw new Error("No se pudieron obtener las coordenadas del dataset en formato JSON.");
+        if (!latLeaf || !lonLeaf || !latLeaf.data || !lonLeaf.data) {
+            console.error("[DEBUG] Estructura de respuesta de coordenadas inesperada:", JSON.stringify(coordResponse, null, 2));
+            throw new Error("No se pudieron obtener las coordenadas del dataset en formato JSON. Revisa la URL en la consola.");
+        }
+
+        const lats = latLeaf.data;
+        const lons = lonLeaf.data;
+        
+        const coords = { lats, lons };
+        coordinateCache.set(datasetUrl, coords);
+        return coords;
+    } catch (error) {
+        // --- MEJORA: Mostrar la URL que falló en el error ---
+        console.error(`[ERROR] URL de coordenadas que falló: ${coordUrl}`);
+        throw error; // Re-lanzar el error original para que sea capturado por la ruta principal
     }
-
-    const lats = latLeaf.data;
-    const lons = lonLeaf.data;
-    
-    // El código obsoleto que usaba 'buffer' y expresiones regulares ha sido eliminado.
-    const coords = { lats, lons };
-    coordinateCache.set(datasetUrl, coords);
-    return coords;
 }
 
 function calculateStatistics(timeSeries, timeValues, day, month) {
@@ -388,32 +395,51 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
     const allHistoricalValues = [];
 
     // 2. Iterar por todos los años disponibles (1980-2016 para esta colección)
-    const startYear = 1980;
+    const startYear = config.startYear || 1980; // Usar el año de inicio de la config, o 1980 por defecto
     const endYear = new Date().getFullYear(); // Analizar hasta el año actual
     const yearPromises = [];
     const now = new Date(); // Obtenemos la fecha actual una vez
 
     for (let year = startYear; year <= endYear; year++) {
-        // --- MEJORA: No intentar descargar datos de fechas futuras ---
-        // Creamos un objeto Date para el año, mes y día que vamos a consultar.
-        // El mes en el constructor de Date es 0-indexado, por eso restamos 1.
+        const urlTemplate = config.datasetUrlTemplate;
         const queryDate = new Date(year, month - 1, day);
-        if (queryDate > now) {
-            console.log(`[INFO] Se detuvo la búsqueda en el año ${year} porque la fecha es futura.`);
-            break; // Salimos del bucle para no consultar fechas que no existen.
+
+        // --- MEJORA: No intentar descargar datos de fechas futuras o no disponibles ---
+        if (urlTemplate.includes('GPM_3IMERGDF')) {
+            // El dataset GPM IMERG "Final" tiene un retraso de ~3.5 meses. Usamos 4 por seguridad.
+            const availabilityDate = new Date(queryDate);
+            availabilityDate.setMonth(availabilityDate.getMonth() + 4);
+            if (availabilityDate > now) {
+                console.log(`[INFO] Se detuvo la búsqueda en el año ${year} para GPM porque los datos aún no están disponibles (retraso de ~3.5 meses).`);
+                break;
+            }
+        } else {
+            // Para otros datasets (MERRA-2), solo verificamos que la fecha no sea futura.
+            if (queryDate > now) {
+                console.log(`[INFO] Se detuvo la búsqueda en el año ${year} porque la fecha es futura.`);
+                break;
+            }
+        }
+        let datasetFileName;
+
+        // --- LÓGICA PARA CONSTRUIR URLS DE MÚLTIPLES DATASETS ---
+        if (urlTemplate.includes('GPM_3IMERGDF')) {
+            // Formato de archivo para GPM IMERG Daily
+            // CORRECCIÓN FINAL: Usar el formato de nombre de archivo V07B validado.
+            datasetFileName = `3B-DAY.MS.MRG.3IMERG.${year}${monthStr}${dayStr}-S000000-E235959.V07B.nc4`; // Nombre de archivo original y correcto
+        } else {
+            // Formato de archivo para MERRA-2
+            const filePrefix = getMerra2FilePrefix(year);
+            const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
+            datasetFileName = `MERRA2_${filePrefix}.tavg1_2d_${datasetType}_Nx.${year}${monthStr}${dayStr}.nc4`;
         }
 
-        const filePrefix = getMerra2FilePrefix(year); // <-- Usamos la nueva función
-        const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
-        
-        const urlTemplate = config.datasetUrlTemplate;
-
-        const datasetFileName = `MERRA2_${filePrefix}.tavg1_2d_${datasetType}_Nx.${year}${monthStr}${dayStr}.nc4`;
         const baseDatasetUrl = `${urlTemplate}/${year}/${monthStr}/${datasetFileName}`;
         
         // Función para obtener los datos de un año
         const fetchYearData = async (currentUrl) => {
             const fetchData = async (url) => {
+                // --- LÓGICA EXISTENTE PARA MERRA-2 ---
                 if (Array.isArray(config.apiVariable)) {
                     // --- LÓGICA PARA MÚLTIPLES VARIABLES (ventoso, incomodo) ---
                     const variableUrls = config.apiVariable.map(v => encodeURI(`${url}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
@@ -458,15 +484,35 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
                         return heatIndexData;
                     }
 
-                    // Fallback por si se añade otra variable de array
-                    const [u10mUrl, v10mUrl] = config.apiVariable.map(v => encodeURI(`${url}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
-                    return [];
+                    // Si no es 'incomodo' ni 'ventoso', pero es un array, devolvemos vacío para evitar errores.
+                    return []; 
                 } else { // Caso de variable simple
-                    const dataUrl = encodeURI(`${url}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`);
+                    let dataUrl;
+                    // --- CORRECCIÓN: La estructura de GPM IMERG Daily es diferente ---
+                    // No tiene dimensión de tiempo, y el orden de lat/lon puede ser distinto.
+                    // La estructura es [lon][lat] para este dataset.
+                    // --- CORRECCIÓN FINAL: La variable NO está en un nodo "Grid" y no tiene dimensión de tiempo ---
+                    // --- CORRECCIÓN GPM: La estructura es [tiempo][lon][lat], se debe incluir el índice de tiempo [0]. ---
+                    if (urlTemplate.includes('GPM_3IMERGDF')) {
+                        dataUrl = encodeURI(`${url}.json?${config.apiVariable}[0][${lonIndex}][${latIndex}]`);
+                    } else {
+                        dataUrl = encodeURI(`${url}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`);
+                    }
                     const dataResponse = await fetchWithCurl(dataUrl, true);
-                    const dataLeaf = dataResponse.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable);
+                    // La respuesta de GPM es diferente, el dato viene en un nodo "Grid"
+                    const dataLeaf = dataResponse.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable) || dataResponse.nodes?.find(n => n.name === 'Grid')?.leaves?.find(l => l.name === config.apiVariable);
                     if (!dataLeaf?.data) throw new Error("Datos simples incompletos");
-                    const simpleData = dataLeaf.data.flat(Infinity);
+                    let simpleData = dataLeaf.data.flat(Infinity); // GPM Daily tiene un solo valor
+                    
+                    // --- CONVERSIÓN DE UNIDADES ---
+                    if (variableName === 'lluvioso' && urlTemplate.includes('GPM_3IMERGDF')) {
+                        // CORRECCIÓN: GPM Daily (GPM_3IMERGDF) viene en mm/hr. Se debe multiplicar por 24 para obtener mm/día.
+                        // El valor es un array con un solo elemento.
+                        simpleData = [simpleData[0] * 24];
+                    } else if (variableName === 'nevado') { // Asumiendo que nevado usará MERRA-2 (kg m-2 s-1)
+                        simpleData = simpleData.map(v => v * 86400);
+                    }
+
                     console.log(`[NASA API] Descarga para el año ${year} completada. URL: ${dataUrl}`);
                     console.log(`       Valores (${config.apiVariable}): [${simpleData.map(v => v.toFixed(5)).join(', ')}]`); // MEJORA: Mostrar más decimales
                     return simpleData;
@@ -494,9 +540,16 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
                     });
                 }
                 // --- MEJORA SOLICITADA: Loguear la URL que falla ---
-                const failedUrl = Array.isArray(config.apiVariable)
-                    ? `${baseDatasetUrl} (para variables U10M y V10M)`
-                    : `${baseDatasetUrl}.json?${config.apiVariable}[...][${latIndex}][${lonIndex}]`;
+                let failedUrl;
+                if (urlTemplate.includes('GPM_3IMERGDF')) {
+                    // --- CORRECCIÓN: Usar el formato de URL correcto para GPM en el log de errores ---
+                    failedUrl = `${baseDatasetUrl}.json?${config.apiVariable}[0][${lonIndex}][${latIndex}]`;
+                } else if (Array.isArray(config.apiVariable)) {
+                    failedUrl = `${baseDatasetUrl} (para variables ${config.apiVariable.join(', ')})`;
+                } else {
+                    failedUrl = `${baseDatasetUrl}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`;
+                }
+
                 // Si un año falla (ej. archivo no existe), lo ignoramos y continuamos.
                 console.warn(`[WARN] No se pudieron obtener datos para el año ${year}. Saltando...`);
                 console.warn(`       URL que falló: ${failedUrl}`);
@@ -567,20 +620,27 @@ app.post("/api/climate-probability", async (req, res) => {
             return res.status(400).json({ success: false, message: `Variable '${variable}' no soportada.` });
         }
 
-        console.log(`\n[Request] Procesando: ${variable} para ${day}/${month} en (Lat:${lat}, Lon:${lon})`);
-
-        // --- CORRECCIÓN: Construir la URL del dataset dinámicamente ---
-        // Necesitamos el mes y día con ceros a la izquierda (ej: 01, 09)
+        // --- CORRECCIÓN: Definir variables de fecha al principio ---
         const monthStr = String(month).padStart(2, '0');
         const dayStr = String(day).padStart(2, '0');
-        // --- CORRECCIÓN DE LÓGICA: Usar el nombre de colección y rango temporal correctos ---
-        // La colección MERRA2_100 (M2T1NXSLV/AER) tiene datos hasta 2016.
-        // Usaremos un año de referencia (ej. 2016) solo para obtener las coordenadas, ya que la grilla es constante.
-        const referenceYear = '2016'; 
-        const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
-        const referenceFilePrefix = getMerra2FilePrefix(referenceYear);
-        const referenceDatasetFileName = `MERRA2_${referenceFilePrefix}.tavg1_2d_${datasetType}_Nx.${referenceYear}${monthStr}${dayStr}.nc4`;
-        const referenceDatasetUrl = `${config.datasetUrlTemplate}/${referenceYear}/${monthStr}/${referenceDatasetFileName}`;
+
+        console.log(`\n[Request] Procesando: ${variable} para ${day}/${month} en (Lat:${lat}, Lon:${lon})`);
+
+        let referenceDatasetUrl;
+
+        if (config.datasetUrlTemplate.includes('GPM_3IMERGDF')) {
+            // Para GPM, la grilla es constante, podemos usar cualquier archivo válido.
+            // --- MEJORA: Usar una fecha fija y sabida que existe para la referencia de coordenadas ---
+            const referenceDatasetFileName = `3B-DAY.MS.MRG.3IMERG.20230101-S000000-E235959.V07B.nc4`;
+            referenceDatasetUrl = `${config.datasetUrlTemplate}/2023/01/${referenceDatasetFileName}`;
+        } else {
+            // Para MERRA-2, usamos un año de referencia para obtener la grilla.
+            const referenceYear = '2016';
+            const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
+            const referenceFilePrefix = getMerra2FilePrefix(referenceYear);
+            const referenceDatasetFileName = `MERRA2_${referenceFilePrefix}.tavg1_2d_${datasetType}_Nx.${referenceYear}${monthStr}${dayStr}.nc4`;
+            referenceDatasetUrl = `${config.datasetUrlTemplate}/${referenceYear}/${monthStr}/${referenceDatasetFileName}`;
+        }
 
         // 1. Obtener coordenadas y encontrar índices
         const { lats, lons } = await getCoordinates(referenceDatasetUrl);
@@ -619,10 +679,16 @@ app.post("/api/climate-probability", async (req, res) => {
             case 'incomodo': // Escala de Índice de Calor de 27°C a 41°C
                 probability = mapRange(stats.mean, 27, 41, 0, 100);
                 break;
-            // --- VARIABLES NUEVAS (aún sin escala definida) ---
-            case 'lluvioso':
-                probability = 0; // Lógica pendiente
+            case 'lluvioso': {
+                // --- CORRECCIÓN: La probabilidad de lluvia se basa en la frecuencia, no en la cantidad promedio ---
+                // Contamos cuántos días en el historial tuvieron una precipitación significativa (> 0.2 mm/día)
+                // y aplicamos Suavizado de Laplace (add-one smoothing) para evitar probabilidades de 0% o 100%.
+                const diasConLluvia = stats.values.filter(p => p > 0.2).length;
+                const totalDias = stats.values.length;
+                // Fórmula: ((aciertos + 1) / (total de intentos + 2)) * 100
+                probability = totalDias > 0 ? ((diasConLluvia + 1) / (totalDias + 2)) * 100 : 0;
                 break;
+            }
             case 'nevado':
                 probability = 0; // Lógica pendiente
                 break;
