@@ -1,23 +1,23 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 
-import Navbar from "./components/Navbar"
-import Home from "./pages/Home/Home"
-//import InfoTabla from "./pages/InfoTabla/InfoTabla"
-import Faq from "./pages/faq/faq"
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home/Home";
+import Faq from "./pages/faq/faq";
 
 function App() {
 
   return (
     <>
       <BrowserRouter>
-      <Navbar/>
+        <Navbar />
         <Routes>
-          <Route path="/" element={<Home/>}/>
-          <Route path="/faq" element={<Faq/>}/>
+          <Route path="/" element={<Home />} />
+          <Route path="/faq" element={<Faq />} />
         </Routes>
+        
       </BrowserRouter>
     </>
-  )
+  );
 }
 
-export default App
+export default App;

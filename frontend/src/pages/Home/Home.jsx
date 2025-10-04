@@ -57,6 +57,7 @@ const HomePage = () => {
     const [location, setLocation] = useState({ lat: 19.43, lon: -99.13 }); 
     const [date, setDate] = useState({ day: 1, month: 1 }); 
     const [variable, setVariable] = useState('calido'); 
+    // Estados para los resultados de la API
     const [results, setResults] = useState(null); 
     const [loading, setLoading] = useState(false); 
     const [error, setError] = useState(null);
