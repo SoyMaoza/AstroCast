@@ -26,7 +26,7 @@ function initializeChat() {
     chat = ai.chats.create({
         model: modelName,
         config: {
-            systemInstruction: "Eres un asistente de chatbot amigable y servicial, diseñado para responder preguntas de forma concisa. Si te piden información de usuario o algo relacionado a ayuda, debes responder con un mensaje que incluya el hipervínculo en formato **Markdown**: [Página de Ayuda](http://localhost:5173/faq). De preferencia que tus respuestas no sean tan largas, tienes permitido dar información sobre su ubicación si te la piden, solo los datos que tienes acceso. ",
+            systemInstruction: "Eres un asistente de chatbot amigable y servicial, diseñado para responder preguntas de forma concisa. Si te piden información de usuario o algo relacionado a ayuda, debes responder con un mensaje que incluya el hipervínculo en formato **Markdown**: [Página de Ayuda](http://localhost:5173/faq). De preferencia que tus respuestas no sean tan largas, tienes permitido dar información sobre su ubicación si te la piden, solo los datos que tienes acceso.Si te llegasen a pedir la ubicacion dales tambien de donde son las cordenadas donde se ubica. ejemplo: si te dan una latitud y longitud has la conversion de la ubicacion correspondiente.",
         },
     });
 }
@@ -39,7 +39,7 @@ app.post('/api/chat', async (req, res) => {
     console.log("Cuerpo de la petición recibido:", req.body);
     // --- FIN DE NUEVOS LOGS DE DIAGNÓSTICO ---
 
-    const { message, lat, lon, date, variable } = req.body;
+    const { message, lat, lon, day, month, variable } = req.body;
 
     if (!message) {
         console.log("❌ Error: El mensaje es vacío o no existe.");
@@ -68,20 +68,22 @@ app.post('/api/chat', async (req, res) => {
         console.log("ℹ️ La regla de ayuda no se activó. Procesando con otras lógicas o con IA...");
 
         // --- Lógica de Resumen de Consulta ---
-        const pideResumenConsulta = (lat && lon && date) &&
+        const pideResumenConsulta = (lat && lon && day && month) &&
         (lowerCaseMessage.includes('mi información') ||
         lowerCaseMessage.includes('mis datos') ||
         lowerCaseMessage.includes('mi latitud') ||
-        lowerCaseMessage.includes('dame la informacion'));
+        lowerCaseMessage.includes('dame la informacion') ||
+        lowerCaseMessage.includes('mi ubicación') || // <-- NUEVA CONDICIÓN
+        lowerCaseMessage.includes('cual es mi ubicacion')); // <-- NUEVA CONDICIÓN
 
         if (pideResumenConsulta) {
             console.log("✅ Lógica de Resumen activada.");
-            const textoRespuesta = `¡Claro! Aquí están los datos de la consulta que tienes seleccionada:\n\n- **Ubicación:**\n  - Latitud: ${lat}\n  - Longitud: ${lon}\n- **Fecha seleccionada:**\n  - Mes: ${date.split('-')[0]}\n  - Día: ${date.split('-')[1]}\n- **Condición a Analizar:** ${variable || 'No seleccionada'}\n\nSi quieres que analice el clima para estos datos, solo pregunta algo como: "dime el pronóstico del clima".`;
+            const textoRespuesta = `¡Claro! Aquí están los datos de la consulta que tienes seleccionada:\n\n- **Ubicación:**\n  - Latitud: ${lat}\n  - Longitud: ${lon}\n- **Fecha seleccionada:**\n  - Mes: ${month}\n  - Día: ${day}\n- **Condición a Analizar:** ${variable || 'No seleccionada'}\n\nSi quieres que analice el clima para estos datos, solo pregunta algo como: "dime el pronóstico del clima".`;
             return res.json({ text: textoRespuesta });
         }
 
         // --- Lógica de Clima ---
-        const esConsultaClima = (lat && lon && date) &&
+        const esConsultaClima = (lat && lon && day && month) &&
         (lowerCaseMessage.includes('clima') ||
         lowerCaseMessage.includes('pronóstico') ||
         lowerCaseMessage.includes('analiza') ||
@@ -91,7 +93,7 @@ app.post('/api/chat', async (req, res) => {
 
         if (esConsultaClima) {
             console.log("✅ Lógica de Clima activada.");
-            const estadisticas = await obtenerEstadisticasHistoricas({ lat: parseFloat(lat), lon: parseFloat(lon) }, date, new Date().getFullYear() - 5, new Date().getFullYear() - 1);
+            const estadisticas = await obtenerEstadisticasHistoricas({ lat: parseFloat(lat), lon: parseFloat(lon) }, `${month}-${day}`, new Date().getFullYear() - 5, new Date().getFullYear() - 1);
             const resumenDatos = estadisticas.generarTextoResumen();
             const promptMejorado = `Basándote en los siguientes datos históricos para la ubicación con latitud ${lat} y longitud ${lon} en la fecha ${date}, responde a la pregunta del usuario de una manera amigable y conversacional. Explica qué significan estas probabilidades. No menciones los años analizados a menos que te lo pregunten.\n\nDatos del Análisis Histórico:\n${resumenDatos}\n\nPregunta del usuario: "${message}"`;
             const response = await chat.sendMessage({ message: promptMejorado });
