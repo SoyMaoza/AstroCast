@@ -18,7 +18,7 @@ const Navbar = () => {
                 <Link to="/" className={`nav-link ${isActive('/') ? 'active' : ''}`}>
                     Dashboard
                 </Link>
-                <Link to="/faq" className={`nav-link ${isActive('/faq') ? 'active' : ''}`}>
+                <Link to="/faq" className={`nav-link ${isActive('/info') ? 'active' : ''}`}>
                     FAQ
                 </Link>
                 <Link to="/history" className={`nav-link ${isActive('/history') ? 'active' : ''}`}>
