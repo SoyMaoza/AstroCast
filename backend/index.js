@@ -840,7 +840,7 @@ app.get("/api/download-data", async (req, res) => {
  */
 app.delete("/api/clear-cache", async (req, res) => {
     try {
-        // --- IMPROVEMENT: Add cleaning for both caches ---
+        // --- IMPROVEMENT: Add cleaning for both cachess ---
         const climateResult = await ClimateDay.deleteMany({});
         const statsResult = await HistoricalStat.deleteMany({});
         const message = `Cache cleared: ${climateResult.deletedCount} climate results and ${statsResult.deletedCount} statistics records deleted.`;
