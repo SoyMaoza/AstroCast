@@ -4,52 +4,52 @@ import './Faq.css'; // Importaremos los estilos que crearemos a continuación
 // Datos de las preguntas y respuestas
 const faqData = [
   {
-    question: '¿Qué es Astro, el asistente climático de Astro Cast?',
+    question: 'What is Astro, the climate assistant from Astro Cast?',
     answer:
-      'Astro es un asistente desarrollado por Astro Cast, diseñado para simplificar el análisis de datos climáticos e históricos. Permite al usuario consultar información como temperatura, viento y otros fenómenos según ubicación y fecha en cualquier parte del mundo, de manera clara y accesible.'
+      'Astro is an assistant developed by Astro Cast, designed to simplify the analysis of historical climate data. It allows users to query information such as temperature, wind, and other phenomena by location and date anywhere in the world, in a clear and accessible way.'
   },
   {
-    question: '¿Qué tipo de datos puedo consultar?',
+    question: 'What kind of data can I query?',
     answer:
-      'Con Astro Puedes explorar y consultar una amplia variedad de datos atmosféricos provenientes del reanálisis MERRA-2(Modern-Era Retrospective analysis for Research and Applications, Version 2). Esto incluye valores de temperatura, velocidad del viento, humedad, precipitaciones, concentración de polvo, entre otros. Los datos cubren registros históricos desde 1980 hasta la actualidad, con resolución temporal horaria y espacial global.'
+      'With Astro, you can explore and query a wide variety of atmospheric data from the MERRA-2 (Modern-Era Retrospective analysis for Research and Applications, Version 2) reanalysis. This includes temperature, wind speed, humidity, precipitation, dust concentration, among others. The data covers historical records from 1980 to the present, with hourly temporal and global spatial resolution.'
   },
   {
-    question: '¿Cómo debo formular mis preguntas para obtener el mejor resultado?',
-    answer: 'Puedes ser específico. Menciona la fecha (día y mes), la ubicación (Selecciona en el mapa en el lugar donde te encuentras ubicado o el lugar que te gustaria conocer) y el fenómeno que te interesa (ej: "Dime la temperatura en Mazatlan el 15 de enero"). Si no especificas la fecha, Astro te dará un promedio.'
+    question: 'How should I formulate my questions to get the best results?',
+    answer: 'You can be specific. Mention the date (day and month), the location (select on the map where you are or the place you want to know about), and the phenomenon you are interested in (e.g., "Tell me the temperature in Mazatlan on January 15"). If you do not specify the date, Astro will give you an average.'
   },
   {
-    question: "¿Puedo consultar datos de clima futuro (pronóstico)?",
-    answer: "No, Astro se especializa en el pasado y el presente. La naturaleza del clima es dinámica e impredecible: un pequeño cambio en el ambiente puede alterar completamente el futuro (el famoso 'efecto mariposa'). Por esta razón, Astro Cast no genera pronósticos ni predice el futuro. Su fuerza está basado en las probabilidad de datos históricos precisos, ayudándote a entender el clima que ya ha ocurrido en cualquier parte del mundo."
+    question: "Can I query future weather data (forecasts)?",
+    answer: "No, Astro specializes in the past and present. The nature of climate is dynamic and unpredictable: a small change in the environment can completely alter the future (the famous 'butterfly effect'). For this reason, Astro Cast does not generate forecasts or predict the future. Its strength is based on the probability of accurate historical data, helping you understand the weather that has already occurred anywhere in the world."
   },
   {
-    question: '¿Cómo puedo compartir mi historial de chat?',
-    answer: 'Dentro de la ventana del chat, encontrarás un botón que dice "Compartir Historial 📲". Al hacer clic, se te pedirá un número de WhatsApp para enviar una transcripción de tu conversación con Astro.'
+    question: 'How can I share my chat history?',
+    answer: 'Inside the chat window, you will find a button that says "Share History 📲". When you click it, you will be asked for a WhatsApp number to send a transcript of your conversation with Astro.'
   },
   {
-    question: '¿La información proporcionada es precisa?',
+    question: 'Is the information provided accurate?',
     answer:
-      'Sí. Los datos que usamos provienen de MERRA-2, un reanálisis atmosférico global muy usado por científicos. En general, los valores de temperatura, viento y otras variables coinciden bastante bien con las observaciones reales. Aunque como cualquier modelo, en zonas muy específicas (montañas, costas, clima extremo) puede haber pequeñas desviaciones. Aun así, los resultados son buenos para tener una idea confiable del clima histórico.'
+      'Yes. The data we use comes from MERRA-2, a global atmospheric reanalysis widely used by scientists. In general, the values for temperature, wind, and other variables match real observations quite well. Although, like any model, there may be small deviations in very specific areas (mountains, coasts, extreme weather). Even so, the results are good for getting a reliable idea of historical weather.'
   },
   {
-    question: '¿Necesito crear una cuenta para usar Astro Cast?',
+    question: 'Do I need to create an account to use Astro Cast?',
     answer:
-      'No, para nada. Astro está diseñado para ser usado de inmediato, sin registros ni contraseñas. Tan Solo con poner un mensaje podras hablar con él y listo; no es necesario crear una cuenta.'
+      'Not at all. Astro is designed to be used immediately, without registrations or passwords. Just by sending a message, you can talk to it; creating an account is not necessary.'
   },
   {
-    question: "¿Mis conversaciones se guardan o se usan para algo más?",
-    answer: "Respetamos tu privacidad. El historial de chat solo se almacena temporalmente para mantener el contexto de la conversación. No usamos tus datos de chat con fines publicitarios ni los compartimos con terceros. La opción de 'Compartir Historial' es voluntaria y solo se envía a quien tú autorices."
+    question: "Are my conversations saved or used for anything else?",
+    answer: "We respect your privacy. The chat history is only stored temporarily to maintain the context of the conversation. We do not use your chat data for advertising purposes or share it with third parties. The 'Share History' option is voluntary and is only sent to whom you authorize."
   },
   {
-    question: '¿Usar Astro Cast tiene algún costo?',
-    answer: 'No, Astro Cast es totalmente gratuito. Está diseñado para ser una herramienta accesible para todos. No hay planes de suscripción ni costos ocultos.'
+    question: 'Is there any cost to use Astro Cast?',
+    answer: 'No, Astro Cast is completely free. It is designed to be an accessible tool for everyone. There are no subscription plans or hidden costs.'
   },
   {
-    question: '¿Existe alguna limitación en las fechas que puedo consultar?',
-    answer: 'Sí. Puedes consultar datos históricos desde enero de 1980 hasta la fecha actual. No tenemos información disponible anterior a esa fecha.'
+    question: 'Are there any limitations on the dates I can query?',
+    answer: 'Yes. You can query historical data from January 1980 to the present date. We do not have information available prior to that date.'
   },
   {
-    question: '¿A quién puedo contactar si encuentro un problema técnico?',
-    answer: 'Si tienes algún problema o sugerencia, no dudes en contactar a nuestro equipo de soporte técnico enviando un correo a: marioosuna0203@gmail.com'
+    question: 'Who can I contact if I encounter a technical problem?',
+    answer: 'If you have any problems or suggestions, do not hesitate to contact our technical support team by sending an email to: marioosuna0203@gmail.com'
   }
 ];
 
@@ -65,7 +65,7 @@ const Faq = () => {
 
   return (
     <div className="faq-container">
-      <h1 className="faq-title">Preguntas Frecuentes (FAQ)</h1>
+      <h1 className="faq-title">Frequently Asked Questions (FAQ)</h1>
       <div className="faq-list">
         {faqData.map((item, index) => (
           <div key={index} className="faq-item">

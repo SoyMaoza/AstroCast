@@ -22,7 +22,7 @@ const Navbar = () => {
                     FAQ
                 </Link>
                 <Link to="/equipo" className={`nav-link ${isActive('/equipo') ? 'active' : ''}`}>
-                    Equipo
+                    Team
                 </Link>
             </div>
             <div className="navbar-right">
