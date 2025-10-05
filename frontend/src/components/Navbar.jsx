@@ -21,6 +21,9 @@ const Navbar = () => {
                 <Link to="/faq" className={`nav-link ${isActive('/info') ? 'active' : ''}`}>
                     FAQ
                 </Link>
+                <Link to="/history" className={`nav-link ${isActive('/history') ? 'active' : ''}`}>
+                    History
+                </Link>
             </div>
             <div className="navbar-right">
                 <button className="icon-button">
