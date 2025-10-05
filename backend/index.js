@@ -39,7 +39,7 @@ app.post('/api/chat', async (req, res) => {
     console.log("Request body received:", req.body);
     // --- FIN DE NUEVOS LOGS DE DIAGNÓSTICO ---
 
-    const { message, lat, lon, day, month, variable } = req.body;
+    let { message, lat, lon, day, month, variable, activity } = req.body;
 
     if (!message) {
         console.log("❌ Error: Message is empty or does not exist.");
@@ -92,10 +92,28 @@ app.post('/api/chat', async (req, res) => {
         let responseText;
 
         if (esConsultaClima) {
+            // --- NUEVA LÓGICA DE ACTIVIDAD ---
+            if (activity) {
+                console.log(`🤖 Actividad recibida: "${activity}". Pidiendo a la IA que determine la variable climática...`);
+                const availableConditions = Object.keys(CONFIG_VARIABLES_NASA).join(', ');
+                const activityPrompt = `For the activity "${activity}", which of the following weather conditions is most relevant to analyze? Respond with only one word from this list: ${availableConditions}.`;
+                
+                const aiResponse = await chat.sendMessage({ message: activityPrompt });
+                const determinedVariable = aiResponse.text.trim().toLowerCase();
+
+                if (CONFIG_VARIABLES_NASA[determinedVariable]) {
+                    variable = determinedVariable;
+                    console.log(`🤖 IA determinó que la variable más relevante es: "${variable}"`);
+                } else {
+                    console.warn(`⚠️ La IA devolvió una variable no válida: "${determinedVariable}". Se usará la variable por defecto.`);
+                }
+            }
+            // --- FIN DE LA NUEVA LÓGICA ---
+
             console.log("✅ Climate Logic activated.");
             const estadisticas = await obtenerEstadisticasHistoricas({ lat: parseFloat(lat), lon: parseFloat(lon) }, `${month}-${day}`, new Date().getFullYear() - 5, new Date().getFullYear() - 1);
             const resumenDatos = estadisticas.generarTextoResumen();
-            const promptMejorado = `Based on the following historical data for the location with latitude ${lat} and longitude ${lon} on the date ${month}-${day}, answer the user's question in a friendly and conversational manner. Explain what these probabilities mean. Do not mention the analyzed years unless asked.\n\nHistorical Analysis Data:\n${resumenDatos}\n\nUser's question: "${message}"`;
+            const promptMejorado = `Based on the historical data for the condition "${variable}", analyze the weather for the activity "${activity || message}" at latitude ${lat} and longitude ${lon} on the date ${month}-${day}. Explain the probabilities in a friendly, conversational way. Do not mention the analyzed years unless asked.\n\nHistorical Analysis Data:\n${resumenDatos}\n\nUser's question: "${message}"`;
             const response = await chat.sendMessage({ message: promptMejorado });
             responseText = response.text;
         } else {

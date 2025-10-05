@@ -9,7 +9,7 @@ const backendHostname = isDevelopment ? 'localhost' : window.location.hostname;
 const API_URL = `http://${backendHostname}:3001/api/chat`;
 
 
-const Chatbox = ({ location, date, variable }) => {
+const Chatbox = ({ location, date, variable, chatTrigger }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -30,6 +30,28 @@ const Chatbox = ({ location, date, variable }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // --- NUEVO: useEffect para manejar el disparador de recomendación ---
+  useEffect(() => {
+    if (chatTrigger) {
+      const { activity, condition, probability } = chatTrigger;
+      
+      // Construimos el prompt para la IA
+      const recommendationPrompt = `Based on a ${probability}% probability of a "${condition}" day, give me a brief and friendly recommendation for my activity: "${activity}".`;
+      
+      // Abrimos el chat
+      setIsOpen(true);
+      
+      // Añadimos un mensaje temporal de "pensando"
+      setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: `Give me a recommendation for my activity.` }]);
+      
+      // Enviamos el prompt al backend
+      // Usamos un pequeño timeout para que el usuario vea el mensaje "user" antes de que llegue la respuesta
+      setTimeout(() => {
+        sendMessageToServer(recommendationPrompt);
+      }, 500);
+    }
+  }, [chatTrigger]); // Este efecto se ejecuta cada vez que chatTrigger cambia
 
   /**
    * --- FUNCIÓN MODIFICADA ---
@@ -68,16 +90,8 @@ const Chatbox = ({ location, date, variable }) => {
     setInputValue(e.target.value);
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    const userMessage = inputValue.trim();
-    if (!userMessage) return;
-
-    setInputValue("");
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), sender: "user", text: userMessage },
-    ]);
+  // --- NUEVO: Función refactorizada para enviar mensajes al servidor ---
+  const sendMessageToServer = async (messageText) => {
     setIsLoading(true);
 
     try {
@@ -85,7 +99,7 @@ const Chatbox = ({ location, date, variable }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userMessage,
+          message: messageText,
           lat: location.lat,
           lon: location.lon,
           // --- CORRECCIÓN: Enviar la fecha como objeto para consistencia ---
@@ -121,6 +135,19 @@ const Chatbox = ({ location, date, variable }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    const userMessage = inputValue.trim();
+    if (!userMessage) return;
+
+    setInputValue("");
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), sender: "user", text: userMessage },
+    ]);
+    sendMessageToServer(userMessage);
   };
 
   const formatMessagesForWhatsapp = () => {

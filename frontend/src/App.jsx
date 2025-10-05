@@ -12,6 +12,8 @@ function App() {
   const [location, setLocation] = useState({ lat: 19.43, lon: -99.13 });
   const [date, setDate] = useState({ day: 1, month: 1 });
   const [variable, setVariable] = useState("calido");
+  // --- NUEVO: Estado para disparar la recomendación del chat ---
+  const [chatTrigger, setChatTrigger] = useState(null);
 
   return (
     <BrowserRouter>
@@ -29,6 +31,7 @@ function App() {
               setDate={setDate}
               variable={variable}
               setVariable={setVariable}
+              triggerChat={setChatTrigger} // Pasamos la función para disparar
             />
           }
         />
@@ -36,7 +39,7 @@ function App() {
       </Routes>
 
       {/* 🔥 Chatbox ahora está global, fuera de Routes */}
-      <Chatbox location={location} date={date} variable={variable} />
+      <Chatbox location={location} date={date} variable={variable} chatTrigger={chatTrigger} />
     </BrowserRouter>
   );
 }

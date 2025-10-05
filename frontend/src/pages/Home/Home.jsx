@@ -56,10 +56,12 @@ function LocationMarker({ location, setLocation }) {
     );
 }
 
-const HomePage = ({ location, setLocation, date, setDate, variable, setVariable }) => {
+const HomePage = ({ location, setLocation, date, setDate, variable, setVariable, triggerChat }) => {
 
     // --- NUEVO: Estado para el buscador de ubicaciones ---
     const [searchQuery, setSearchQuery] = useState("");
+    // --- NUEVO: Estado para la actividad del usuario ---
+    const [activity, setActivity] = useState("");
     // Estados principales
 
 
@@ -152,7 +154,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                     lon: parseFloat(location.lon),
                     day: parseInt(date.day),
                     month: parseInt(date.month),
-                    variable: variable
+                    variable: variable,
+                    activity: activity // <-- Enviamos la nueva actividad al backend
                 })
             });
 
@@ -163,6 +166,15 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
 
             const data = await response.json();
             setResults(data);
+
+            // --- NUEVO: Disparar la recomendación del chat ---
+            if (data.success) {
+                triggerChat({
+                    activity: activity || "your activity",
+                    condition: data.variable,
+                    probability: data.probability,
+                });
+            }
 
         } catch (err) {
             console.error("API query error:", err);
@@ -243,6 +255,18 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                             value={date.month} 
                             onChange={handleDateChange}
                             onKeyDown={handleDateKeyDown} 
+                        />
+                    </div>
+
+                    {/* --- NUEVO: Campo de Actividad --- */}
+                    <div className="input-group">
+                        <label>💡 Activity:</label>
+                        <input
+                            type="text"
+                            name="activity"
+                            placeholder=" wedding,"
+                            value={activity}
+                            onChange={(e) => setActivity(e.target.value)}
                         />
                     </div>
                     
