@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Label, ReferenceArea } from 'recharts';
 
 // --- MEJORA: Funciones de conversión de temperatura ---
@@ -29,6 +29,18 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
     // Asumimos una desviación estándar para la visualización. 
     // Un valor entre 5 y 10 suele funcionar bien para temperaturas en K.
     const stdDev = 8; 
+
+    // --- NEW: State to control a simple fade-in animation for all elements ---
+    const [animatedOpacity, setAnimatedOpacity] = useState(0);
+
+    useEffect(() => {
+        // Reset and trigger the animation when the data changes.
+        setAnimatedOpacity(0);
+        const timer = setTimeout(() => {
+            setAnimatedOpacity(1); // Trigger the fade-in to full opacity
+        }, 100); // Short delay to allow the chart to render first
+        return () => clearTimeout(timer);
+    }, [mean, threshold]); // Rerun animation if data changes
 
     // --- MEJORA: Comprobación de props para evitar errores ---
     // Si los datos principales no son números válidos, no renderizar el gráfico.
@@ -116,14 +128,22 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
                         x1={isRiskHigh ? displayThreshold : chartData[0].x}
                         x2={isRiskHigh ? chartData[chartData.length - 1].x : displayThreshold}
                         stroke="none"
-                        fill="#F44336" // Rojo de riesgo
-                        fillOpacity={0.2} // Hacemos el color semitransparente
+                        fill="#F44336"
+                        fillOpacity={animatedOpacity * 0.2} // Final opacity is 0.2
+                        style={{ transition: 'fill-opacity 1.2s ease-out' }} // CSS transition for smooth effect
                     >
                         <Label value="Risk Zone" position="insideTop" fill="#B71C1C" fontSize={12} />
                     </ReferenceArea>
 
                     {/* Línea de la Media Histórica */}
-                    <ReferenceLine x={displayMean} stroke="#2196F3" strokeWidth={2} strokeDasharray="4 4">
+                    <ReferenceLine 
+                        x={displayMean} 
+                        stroke="#2196F3" 
+                        strokeWidth={2} 
+                        strokeDasharray="4 4"
+                        strokeOpacity={animatedOpacity} // Use animated state for fade-in
+                        style={{ transition: 'stroke-opacity 0.8s ease-out 0.2s' }} // Staggered animation
+                    >
                         <Label 
                             value={`Average: ${displayMean.toFixed(1)}`} 
                             position="top" 
@@ -133,7 +153,13 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
                     </ReferenceLine>
 
                     {/* Línea del Umbral de Riesgo */}
-                    <ReferenceLine x={displayThreshold} stroke="#F44336" strokeWidth={2}>
+                    <ReferenceLine 
+                        x={displayThreshold} 
+                        stroke="#F44336" 
+                        strokeWidth={2}
+                        strokeOpacity={animatedOpacity} // Use animated state for fade-in
+                        style={{ transition: 'stroke-opacity 0.8s ease-out 0.3s' }} // Staggered animation
+                    >
                         {/* --- MEJORA: Posiciona la etiqueta dentro del área de riesgo si está muy cerca de la media --- */}
                         <Label 
                             value={`Limit: ${displayThreshold.toFixed(1)}`} 
