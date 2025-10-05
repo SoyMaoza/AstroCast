@@ -210,7 +210,7 @@ const CONFIG_VARIABLES_NASA = {
     dusty: {
         apiVariable: "DUEXTTAU",
         datasetUrlTemplate: MERRA2_AER_URL_TEMPLATE,
-        unit: "1 (dimensionless)",
+        unit: "(dimensionless)",
         threshold: (stats) => stats.mean + 2.0 * stats.stdDev, // For dusty, a more extreme threshold
         isBelowThresholdWorse: false,
     },
@@ -231,6 +231,7 @@ const CONFIG_VARIABLES_NASA = {
     rainy: {
         apiVariable: "precipitation", // FINAL FIX: The variable in GPM IMERG V7 is 'precipitation'.
         datasetUrlTemplate: GPM_IMERG_URL_TEMPLATE,
+        unit: "mm/day", // <-- FIX: Add the missing unit for precipitation
         startYear: 1998, // GPM IMERG data starts in June 1998
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
@@ -666,11 +667,11 @@ app.post("/api/climate-probability", async (req, res) => {
         let probability;
         // Absolute scales for each variable
         switch (variable) {
-            case 'warm': // Adjusted scale for higher sensitivity: 24°C (297.15K) to 32°C (305.15K)
-                probability = mapRange(stats.mean, 297.15, 305.15, 0, 100);
+            case 'warm': // Rango ascendente correcto para 'warm'
+                probability = mapRange(stats.mean, 293.15, 308.15, 0, 100); // 20°C a 35°C
                 break;
-            case 'cold': // NEW SCALE: 20°C (293.15K) to 0°C (273.15K)
-                probability = mapRange(stats.mean, 293.15, 273.15, 0, 100);
+            case 'cold': // Rango descendente correcto para 'cold'
+                probability = mapRange(stats.mean, 293.15, 273.15, 0, 100); // 20°C a 0°C
                 break;
             case 'windy': // Scale from 0 m/s to 15 m/s
                 probability = mapRange(stats.mean, 0, 15, 0, 100);

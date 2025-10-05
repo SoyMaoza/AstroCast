@@ -161,6 +161,12 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
     }
   }
 
+  // --- NEW: Dynamic detail description based on the variable's historical range ---
+  const startYear = (localResults && (localResults.variable === 'rainy')) ? 1998 : 1980;
+  const historicalRange = `${startYear}-${new Date().getFullYear()}`;
+  const detailDescription = localResults ? `The probability of the '${localResults.variable}' condition occurring is ${localResults.probability}%, based on the historical average of ${displayMean.toFixed(2)} ${displayUnitSymbol} for the range ${historicalRange}.` : "";
+
+
   // --- NEW: Chart Download Functionality ---
   const handleChartDownload = async () => {
     if (!chartRef.current) {
@@ -281,7 +287,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
                 </div>
               )}
               <h3>Analysis Details</h3>
-              <p className="detail-description">{/* Puedes reconstruir este texto si lo necesitas */}</p>
+              <p className="detail-description">{detailDescription}</p>
               <h3 style={{ marginTop: '15px' }}>Visualization</h3>
               <div ref={chartRef}> {/* <-- NEW: Wrapper with ref for capturing */}
                 <DistributionChart 

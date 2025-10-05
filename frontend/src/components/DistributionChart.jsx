@@ -34,8 +34,9 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
     if (unit && unit.includes('fraction')) { // For cloudy (0-1 scale)
         stdDev = 0.15;
     } else if (unit === 'mm/day') { // For rainy/snowy
-        // Use a fraction of the mean, but with a minimum value to handle means of 0.
-        stdDev = Math.max(mean * 0.5, 2); 
+        // --- FIX: Make stdDev proportional to the mean for better scaling on small values ---
+        // Use a multiple of the mean, with a small minimum value to handle a mean of 0.
+        stdDev = Math.max(mean * 1.5, 0.5); 
     } else if (unit === 'kg/kg') { // For humid
         stdDev = 0.002;
     } else { // Default for temperature (K) and wind (m/s)
