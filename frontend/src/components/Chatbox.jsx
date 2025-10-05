@@ -3,10 +3,12 @@ import "./Chatbox.css";
 import { MdOutlineMessage } from "react-icons/md";
 import { IoMdSend } from "react-icons/io";
 
-// --- MEJORA: URL de API dinámica para funcionar tanto en local como en red ---
-const isDevelopment = import.meta.env.DEV;
-const backendHostname = isDevelopment ? 'localhost' : window.location.hostname;
-const API_URL = `http://${backendHostname}:3001/api/chat`;
+// --- MEJORA: URL de API dinámica y robusta para despliegue ---
+// Usa la variable de entorno VITE_BACKEND_URL si está definida (para producción),
+// de lo contrario, usa la URL de desarrollo local.
+const API_URL = import.meta.env.VITE_BACKEND_URL
+    ? `${import.meta.env.VITE_BACKEND_URL}/api/chat`
+    : 'http://localhost:3001/api/chat';
 
 
 const Chatbox = ({ location, date, variable, chatTrigger }) => {

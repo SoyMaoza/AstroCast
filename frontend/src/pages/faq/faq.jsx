@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './Faq.css'; // Importaremos los estilos que crearemos a continuación
+import './faq.css'; // Importaremos los estilos que crearemos a continuación
 
 // Datos de las preguntas y respuestas
 const faqData = [
