@@ -26,7 +26,10 @@
 .probability-card:hover {
     transform: translateY(-5px);
 }
-
+/* This is where you can edit the title's style */
+.probability-card h3 {
+    font-size: 1.6rem;
+}
 /* Indicador de riesgo en la parte superior */
 .risk-indicator {
     height: 8px; /* Altura de la barra */
