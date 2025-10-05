@@ -9,7 +9,7 @@ const backendHostname = isDevelopment ? 'localhost' : window.location.hostname;
 const API_URL = `http://${backendHostname}:3001/api/chat`;
 
 
-const Chatbox = ({ location, date, variable }) => {
+const Chatbox = ({ location, date, variable, chatTrigger }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -30,6 +30,28 @@ const Chatbox = ({ location, date, variable }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // --- NUEVO: useEffect para manejar el disparador de recomendación ---
+  useEffect(() => {
+    if (chatTrigger) {
+      const { activity, condition, probability } = chatTrigger;
+      
+      // Construimos el prompt para la IA
+      const recommendationPrompt = `Based on a ${probability}% probability of a "${condition}" day, give me a brief and friendly recommendation for my activity: "${activity}".`;
+      
+      // Abrimos el chat
+      setIsOpen(true);
+      
+      // Añadimos un mensaje temporal de "pensando"
+      setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: `Give me a recommendation for my activity.` }]);
+      
+      // Enviamos el prompt al backend
+      // Usamos un pequeño timeout para que el usuario vea el mensaje "user" antes de que llegue la respuesta
+      setTimeout(() => {
+        sendMessageToServer(recommendationPrompt);
+      }, 500);
+    }
+  }, [chatTrigger]); // Este efecto se ejecuta cada vez que chatTrigger cambia
 
   /**
    * --- FUNCIÓN MODIFICADA ---
@@ -68,6 +90,71 @@ const Chatbox = ({ location, date, variable }) => {
     setInputValue(e.target.value);
   };
 
+  // --- NUEVO: Función refactorizada para enviar mensajes al servidor ---
+  const sendMessageToServer = async (messageText) => {
+    setIsLoading(true);
+
+    // Añade un ID único al mensaje del bot que vamos a ir actualizando
+    const botMessageId = Date.now() + 1;
+    setMessages((prev) => [
+      ...prev,
+      { id: botMessageId, sender: "bot", text: "" }, // Mensaje vacío inicial
+    ]);
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: messageText,
+          lat: location?.lat,
+          lon: location?.lon,
+          day: date?.day ? parseInt(date.day) : null,
+          month: date?.month ? parseInt(date.month) : null,
+          variable: variable,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server Error: ${response.statusText}`);
+      }
+
+      // --- LÓGICA DE STREAMING ---
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
+
+        for (const line of lines) {
+          const jsonString = line.replace('data: ', '');
+          try {
+            const parsed = JSON.parse(jsonString);
+            if (parsed.text) {
+              setMessages(prev => prev.map(msg => 
+                msg.id === botMessageId ? { ...msg, text: msg.text + parsed.text } : msg
+              ));
+            }
+          } catch (e) {
+            console.error("Error parsing stream chunk:", jsonString);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error en el chat:", error);
+      setMessages(prev => prev.map(msg => 
+        msg.id === botMessageId ? { ...msg, text: `I'm sorry, an error occurred: ${error.message}` } : msg
+      ));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     const userMessage = inputValue.trim();
@@ -78,49 +165,7 @@ const Chatbox = ({ location, date, variable }) => {
       ...prev,
       { id: Date.now(), sender: "user", text: userMessage },
     ]);
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMessage,
-          lat: location.lat,
-          lon: location.lon,
-          // --- CORRECCIÓN: Enviar la fecha como objeto para consistencia ---
-          day: parseInt(date.day),
-          month: parseInt(date.month),
-          variable: variable,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || `Error del servidor: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now() + 1, sender: "bot", text: data.text },
-      ]);
-    } catch (error) {
-      console.error("Error en el chat:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: "bot",
-          text: `I'm sorry, an error occurred: ${error.message}`,
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    sendMessageToServer(userMessage);
   };
 
   const formatMessagesForWhatsapp = () => {
