@@ -41,3 +41,5 @@ dist-ssr/
 *.jpeg
 *.gif
 *.svg
+!frontend/src/components/assets/icons/graph-download-icon.svg
+!frontend/public/astrocast-logo.png
