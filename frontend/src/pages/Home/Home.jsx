@@ -12,12 +12,12 @@ import L from 'leaflet';
 
 
 
-// --- MEJORA: URL de API dinámica y robusta ---
-// Determina si estamos en un entorno de desarrollo local o en la red.
-// `import.meta.env.DEV` es una variable especial de Vite.
-const isDevelopment = import.meta.env.DEV;
-const backendHostname = isDevelopment ? 'localhost' : window.location.hostname;
-const API_URL = `http://${backendHostname}:3001/api/climate-probability`;
+// --- MEJORA: URL de API dinámica y robusta para despliegue ---
+// Usa la variable de entorno VITE_BACKEND_URL si está definida (para producción),
+// de lo contrario, usa la URL de desarrollo local.
+const API_URL = import.meta.env.VITE_BACKEND_URL 
+    ? `${import.meta.env.VITE_BACKEND_URL}/api/climate-probability`
+    : 'http://localhost:3001/api/climate-probability';
 
 // Variables climáticas
 const VARIABLES = [
