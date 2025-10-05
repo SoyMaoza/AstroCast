@@ -1,85 +1,124 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./History.css";
-
 
 // Definición de los hitos (1980 - 2025)
 const timelineEvents = [
     {
         year: "1980",
-        stage: "Etapa 1",
-        title: "Consolidación de la Observación Terrestre Satelital",
+        stage: "Phase 1",
+        title: "Consolidation of Satellite Earth Observation",
         description:
-            "La NASA y otras agencias espaciales consolidan el uso de satélites, como la serie Landsat, para el monitoreo sistemático y a largo plazo de la superficie y atmósfera terrestre, sentando las bases para la climatología moderna.",
-         image: "/assets/history/etapa-1.jpg" 
+            "NASA and other space agencies consolidate the use of satellites, such as the Landsat series, for the systematic and long-term monitoring of the Earth's surface and atmosphere, laying the foundation for modern climatology.",
+        image: "/assets/history/etapa-1.jpg",
+        context: {
+            icon: "🛰️",
+            text: "The dawn of the digital age and global satellite communication."
+        }
     },
     {
         year: "1987",
-        stage: "Etapa 2",
-        title: "Protocolo de Montreal",
+        stage: "Phase 2",
+        title: "Montreal Protocol",
         description:
-            "Firma de un tratado internacional histórico diseñado para proteger la capa de ozono, eliminando progresivamente la producción de numerosas sustancias responsables de su agotamiento. Es considerado el acuerdo ambiental más exitoso hasta la fecha.",
-        image: "/assets/history/etapa-2.jpg" 
+            "Signing of a historic international treaty designed to protect the ozone layer by phasing out the production of numerous substances responsible for its depletion. It is considered the most successful environmental agreement to date.",
+        image: "/assets/history/etapa-2.jpg",
+        context: {
+            icon: "🌍",
+            text: "A growing global awareness of environmental issues emerges."
+        }
     },
     {
         year: "1988",
-        stage: "Etapa 3",
-        title: "Creación del IPCC",
+        stage: "Phase 3",
+        title: "Creation of the IPCC",
         description:
-            "Se establece el Grupo Intergubernamental de Expertos sobre el Cambio Climático (IPCC) por la Organización Meteorológica Mundial (OMM) y el Programa de las Naciones Unidas para el Medio Ambiente (PNUMA) para proporcionar evaluaciones científicas integrales sobre el cambio climático.",
-        image: "/assets/history/etapa-3.jpg" 
+            "The Intergovernmental Panel on Climate Change (IPCC) is established by the World Meteorological Organization (WMO) and the United Nations Environment Programme (UNEP) to provide comprehensive scientific assessments on climate change.",
+        image: "/assets/history/etapa-3.jpg",
+        context: {
+            icon: "🔬",
+            text: "Scientific consensus on climate change begins to solidify."
+        }
     },
     {
         year: "1997",
-        stage: "Etapa 4",
-        title: "Adopción del Protocolo de Kioto",
+        stage: "Phase 4",
+        title: "Adoption of the Kyoto Protocol",
         description:
-            "Se adopta un protocolo en el marco de la Convención Marco de las Naciones Unidas sobre el Cambio Climático (CMNUCC), comprometiendo a los países industrializados a limitar y reducir sus emisiones de gases de efecto invernadero (GEI).",
-        image: "https://climate.nasa.gov/system/internal_resources/details/original/2936_kyoto.jpg"
+            "A protocol is adopted under the United Nations Framework Convention on Climate Change (UNFCCC), committing industrialized countries to limit and reduce their greenhouse gas (GHG) emissions.",
+        image: "/assets/history/etapa-4.jpg",
+        context: {
+            icon: "🏛️",
+            text: "International policy starts to formally address GHG emissions."
+        }
     },
     {
         year: "1999",
-        stage: "Etapa 5",
-        title: "Lanzamiento del Satélite Terra (EOS AM-1)",
+        stage: "Phase 5",
+        title: "Launch of the Terra Satellite (EOS AM-1)",
         description:
-            "La NASA lanza Terra, el satélite insignia del Sistema de Observación de la Tierra (EOS), diseñado para monitorear el estado del medio ambiente de la Tierra y los cambios en su sistema climático. Sus instrumentos miden variables clave como la radiación, las nubes, los aerosoles y la cubierta terrestre.",
-        image: "https://eospso.nasa.gov/sites/default/files/missions/Terra_1.jpeg"
+            "NASA launches Terra, the flagship satellite of the Earth Observing System (EOS), designed to monitor the state of Earth's environment and changes in its climate system. Its instruments measure key variables such as radiation, clouds, aerosols, and land cover.",
+        image: "/assets/history/etapa-5.jpeg",
+        context: {
+            icon: "📡",
+            text: "Advanced Earth observation systems provide unprecedented data."
+        }
     },
     {
         year: "2015",
-        stage: "Etapa 6",
-        title: "Firma del Acuerdo de París",
+        stage: "Phase 6",
+        title: "Signing of the Paris Agreement",
         description:
-            "Un acuerdo histórico dentro de la CMNUCC que establece medidas para la reducción de las emisiones de GEI. Su objetivo es limitar el calentamiento global a muy por debajo de 2 °C, preferiblemente a 1.5 °C, en comparación con los niveles preindustriales.",
-        image: "https://climate.nasa.gov/system/news_items/main_images/2715_paris.jpg"
+            "A landmark agreement within the UNFCCC that establishes measures for the reduction of GHG emissions. Its goal is to limit global warming to well below 2°C, preferably to 1.5°C, compared to pre-industrial levels.",
+        image: "/assets/history/etapa-6.jpg",
+        context: {
+            icon: "🤝",
+            text: "A global commitment to a sustainable future is forged."
+        }
     },
     {
         year: "2020",
-        stage: "Etapa 7",
-        title: "Hito en el Aumento de la Temperatura Global",
+        stage: "Phase 7",
+        title: "Milestone in Global Temperature Rise",
         description:
-            "El año 2020 empata con 2016 como el año más cálido registrado, una clara evidencia de la tendencia de calentamiento a largo plazo. La década 2011-2020 fue la más cálida registrada, según datos de la NASA y la NOAA.",
-        image: "https://climate.nasa.gov/system/news_items/main_images/2941_2020_temp.jpg"
+            "The year 2020 ties with 2016 as the warmest year on record, clear evidence of the long-term warming trend. The decade 2011-2020 was the warmest recorded, according to data from NASA and NOAA.",
+        image: "/assets/history/etapa-7.jpg",
+        context: {
+            icon: "🌡️",
+            text: "The impacts of climate change become increasingly tangible."
+        }
     },
     {
         year: "2021",
-        stage: "Etapa 8",
-        title: "Publicación del Sexto Informe de Evaluación del IPCC (AR6)",
+        stage: "Phase 8",
+        title: "Publication of the IPCC Sixth Assessment Report (AR6)",
         description:
-            "El IPCC publica la primera parte de su Sexto Informe de Evaluación, calificándolo como un 'código rojo para la humanidad'. El informe concluye de manera inequívoca que la influencia humana ha calentado la atmósfera, el océano y la tierra a un ritmo sin precedentes.",
-        image: "https://climate.nasa.gov/system/news_items/main_images/3105_ar6-cover.jpg"
+            "The IPCC releases the first part of its Sixth Assessment Report, calling it a 'code red for humanity.' The report unequivocally concludes that human influence has warmed the atmosphere, ocean, and land at an unprecedented rate.",
+        image: "/assets/history/etapa-8.jpg",
+        context: {
+            icon: "❗",
+            text: "The scientific community issues its most urgent warning yet."
+        }
     },
     {
         year: "2025",
-        stage: "Etapa 9",
-        title: "AstroCast: Probabilidad y Datos de la NASA",
+        stage: "Phase 9",
+        title: "AstroCast: Probability and NASA Data",
         description:
-            "Lanzamiento de AstroCast en el NASA Space Apps Challenge, una aplicación que utiliza datos de observación de la Tierra para proporcionar análisis probabilísticos de condiciones climáticas, permitiendo a los usuarios tomar decisiones informadas.",
-        image: "https://www.nasa.gov/sites/default/files/thumbnails/image/nasa-logo-web-rgb.png"
+            "Launch of AstroCast in the NASA Space Apps Challenge, an application that uses Earth observation data to provide probabilistic analyses of climate conditions, enabling users to make informed decisions.",
+        image: "/assets/history/etapa9.webp",
+        context: {
+            icon: "🚀",
+            text: "Data democratization empowers individuals to take action."
+        }
     }
 ];
 
-const Histories = () => {
+const History = () => {
     const itemsRef = useRef([]);
+    const epilogueRef = useRef(null); // ✅ Añadimos una ref para la conclusión
+
+    // --- MEJORA: Estado para gestionar la imagen expandida en el modal ---
+    const [expandedImage, setExpandedImage] = useState(null);
 
     // Lógica para observar la visibilidad y aplicar la clase 'visible' (Animación)
     useEffect(() => {
@@ -99,17 +138,46 @@ const Histories = () => {
             if (item) observer.observe(item);
         });
 
+        // ✅ Observamos también el elemento de la conclusión
+        if (epilogueRef.current) {
+            observer.observe(epilogueRef.current);
+        }
+
         return () => observer.disconnect();
     }, []);
 
+    // --- MEJORA: Funciones para manejar el modal de la imagen ---
+    const handleImageClick = (imageUrl) => {
+        setExpandedImage(imageUrl);
+    };
+
+    const handleCloseModal = () => {
+        setExpandedImage(null);
+    };
+
     return (
         <div className="history-container">
-            <h1 className="history-title">Hitos en la Ciencia y Política Climática</h1>
+            <h1 className="history-title">CLIMATE CHRONOLOGY: DECADES OF SCIENCE AND KEY AGREEMENTS</h1>
             <p className="history-intro">
-                Una cronología de los eventos clave que han definido nuestra comprensión del **cambio climático**
-                y los avances en la **observación de la Tierra** por parte de la NASA.
+                The timeline that changed everything. A journey through the crucial events that have shaped our understanding of climate change and the invaluable contribution of NASA's Earth observation.
             </p>
-
+            
+            {/* PRÓLOGO MAGNÍFICO CON TRANSICIÓN NARRATIVA */}
+            <div className="timeline-manifesto">
+                <p>
+                    In the early <strong>1980s</strong>, the global climate response was in its <strong>Era of Observation</strong>. Science, driven by systems like NASA's <strong>Earth observation</strong>, began to provide the <strong>undeniable data</strong> that quantified environmental damage and confirmed global warming.
+                </p>
+                <p>
+                    This evidence marked the beginning of the <strong>Era of Commitment</strong>. This was solidified with the establishment of key institutions like the <strong>IPCC</strong> and the signing of crucial political treaties such as the Montreal and Kyoto Protocols, where science was directly translated into emission limits and national responsibility.
+                </p>
+                <p>
+                    Finally, the <strong>Era of Universal Action</strong>, led by the <strong>Paris Agreement</strong>, united the global community around a 1.5°C target. The evolution culminates with current technology: projects like AstroCast that use <strong>NASA's space science</strong> to translate complex data into <strong>practical probabilities</strong>, empowering people to make informed decisions.
+                </p>
+                <p className="manifesto-closer">
+                    Below, we present a timeline narrating this evolution through its <strong>most decisive milestones</strong>.
+                </p>
+            </div>
+            
             <div className="timeline">
                 {timelineEvents.map((event, index) => (
                     <div
@@ -118,19 +186,58 @@ const Histories = () => {
                         className={`timeline-item ${index % 2 === 0 ? "left" : "right"}`}
                     >
                         <div className="timeline-content">
-                            {/* NUEVO: Mostrar el número de etapa */}
                             <span className="timeline-stage">{event.stage}</span>
                             <h2>{event.year}</h2>
                             <h3>{event.title}</h3>
                             <p>{event.description}</p>
                             {/* Mostrar imagen solo si la URL está definida */}
-                            {event.image && <img src={event.image} alt={event.title} loading="lazy" />}
+                            {event.image && (
+                                <img 
+                                    src={event.image} 
+                                    alt={event.title} 
+                                    loading="lazy" 
+                                    onClick={() => handleImageClick(event.image)}
+                                />
+                            )}
                         </div>
+
+                        {/* ✅ CÁPSULA DE CONTEXTO: Se renderiza en el espacio vacío */}
+                        {event.context && (
+                            <div className="timeline-context-box">
+                                <span className="context-icon">{event.context.icon}</span>
+                                <p>{event.context.text}</p>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
+
+            {/* --- SECCIÓN DE CONCLUSIÓN ELEGANTE --- */}
+            <div className="timeline-epilogue" ref={epilogueRef}>
+                <h2>The Future is Now</h2>
+                <p>
+                    Climate history is not just a record of the past; it is the prologue to our future. Every piece of data, every mission, and every agreement has brought us here: a turning point where information becomes power.
+                </p>
+                <p>
+                    With tools like <strong>AstroCast</strong>, the legacy of NASA's space science is in your hands. You are no longer a mere spectator, but an active participant, capable of anticipating, planning, and adapting.
+                </p>
+                <p className="epilogue-closer">
+                    The next chapter of this story is written by you.
+                </p>
+            </div>
+
+            {/* --- MEJORA: Modal para la imagen expandida --- */}
+            {expandedImage && (
+                <div className="image-modal-overlay" onClick={handleCloseModal}>
+                    <button className="close-modal-btn" onClick={handleCloseModal}>&times;</button>
+                    <div className="image-modal-content">
+                        <img src={expandedImage} alt="Expanded view" className="expanded-image" />
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
 
-export default Histories
+export default History;
