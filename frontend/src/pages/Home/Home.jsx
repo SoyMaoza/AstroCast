@@ -12,12 +12,18 @@ import L from 'leaflet';
 
 
 
-// --- MEJORA: URL de API dinámica y robusta para despliegue ---
-// Usa la variable de entorno VITE_BACKEND_URL si está definida (para producción),
-// de lo contrario, usa la URL de desarrollo local.
-const API_URL = import.meta.env.VITE_BACKEND_URL 
-    ? `${import.meta.env.VITE_BACKEND_URL}/api/climate-probability`
-    : 'http://localhost:3001/api/climate-probability';
+// --- MEJORA COMBINADA: URL de API base, dinámica y robusta ---
+// 1. Si VITE_BACKEND_URL está definida (para producción), la usa.
+// 2. Si no, usa el hostname actual de la ventana (para desarrollo en red local).
+// 3. Si todo falla (ej. en un entorno sin window), usa 'localhost'.
+const backendHostname = import.meta.env.VITE_BACKEND_URL
+    ? import.meta.env.VITE_BACKEND_URL
+    : (typeof window !== 'undefined' ? `http://${window.location.hostname}:3001` : 'http://localhost:3001');
+
+const API_BASE_URL = `${backendHostname}/api`;
+
+const kelvinToCelsius = (k) => k - 273.15;
+const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
 
 // Variables climáticas
 const VARIABLES = [
@@ -74,6 +80,9 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
     const [results, setResults] = useState(null); 
     const [loading, setLoading] = useState(false); 
     const [error, setError] = useState(null);
+
+    // --- MEJORA: Estado para el selector de unidades de temperatura ---
+    const [temperatureUnit, setTemperatureUnit] = useState('C'); // Por defecto en Celsius
 
     // --- MEJORA: Ref para la sección de resultados ---
     const resultsRef = useRef(null);
@@ -162,7 +171,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
         }
 
         try {
-            const response = await fetch(API_URL, {
+            const response = await fetch(`${API_BASE_URL}/climate-probability`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -190,9 +199,45 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
         }
     };
 
+    // --- FIX: Pass the selected temperature unit to the download endpoint ---
+    const handleDownload = () => {
+        const { lat, lon } = location;
+        const { day, month } = date;
+        let downloadUrl = `${API_BASE_URL}/download-data?lat=${lat}&lon=${lon}&day=${day}&month=${month}&variable=${variable}&format=json`;
+        // If it's a temperature variable, add the selected unit to the query
+        if (variable === 'warm' || variable === 'cold') {
+            downloadUrl += `&displayUnit=${temperatureUnit}`;
+        }
+        window.open(downloadUrl, '_blank');
+    };
+
     const getVariableButtonClass = (val) => 
         `variable-btn ${variable === val ? 'active' : ''}`;
 
+    // --- MEJORA: Lógica para mostrar la temperatura en la unidad seleccionada ---
+    const isTemperatureVariable = results && (results.variable === 'warm' || results.variable === 'cold');
+    
+    let displayMean = results ? results.historicalMean : 0;
+    let displayUnitSymbol = results ? results.unit : '';
+
+    if (results && isTemperatureVariable && results.unit === 'K') {
+        if (temperatureUnit === 'C') {
+            displayMean = kelvinToCelsius(results.historicalMean);
+            displayUnitSymbol = '°C';
+        } else if (temperatureUnit === 'F') {
+            displayMean = kelvinToFahrenheit(results.historicalMean);
+            displayUnitSymbol = '°F';
+        } else {
+            // Si es 'K', mantenemos los valores originales
+            displayMean = results.historicalMean;
+            displayUnitSymbol = 'K';
+        }
+    }
+
+    // --- FIX: Generate the detail description on the frontend to allow for unit conversion ---
+    const startYear = (results && (results.variable === 'rainy')) ? 1998 : 1980;
+    const historicalRange = `${startYear}-${new Date().getFullYear()}`;
+    const detailDescription = results ? `The probability of the '${results.variable}' condition occurring is ${results.probability}%, based on the historical average of ${displayMean.toFixed(2)} ${displayUnitSymbol} for the range ${historicalRange}.` : "";
     return (
         <div className="container homepage-container">
             <header className="page-header">
@@ -332,21 +377,49 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                                     Based on historical data, there is a <strong>{results.probability}%</strong> chance of this condition occurring.
                                 </p>
                                 <p>
-                                    The historical average for this day is <strong>{results.historicalMean.toFixed(2)} {results.unit}</strong>.
+                                    {/* --- FIX: Show 2 decimal places for rain, 1 for others --- */}
+                                    The historical average for this day is <strong>{displayMean.toFixed(results.variable === 'rainy' ? 2 : 1)} {displayUnitSymbol}</strong>.
                                 </p>
+                                <button className="download-json-btn" onClick={handleDownload}>
+                                    Download Raw Data (JSON)
+                                </button>
                             </div>
                         </div>
 
 
                         <div className="data-visualization-card">
+                            {/* --- MEJORA: Selector de unidades de temperatura --- */}
+                            {isTemperatureVariable && (
+                                <div className="unit-selector">
+                                    <button 
+                                        className={`unit-selector-btn ${temperatureUnit === 'C' ? 'active' : ''}`}
+                                        onClick={() => setTemperatureUnit('C')}
+                                    >
+                                        °C
+                                    </button>
+                                    <button 
+                                        className={`unit-selector-btn ${temperatureUnit === 'F' ? 'active' : ''}`}
+                                        onClick={() => setTemperatureUnit('F')}
+                                    >
+                                        °F
+                                    </button>
+                                    <button 
+                                        className={`unit-selector-btn ${temperatureUnit === 'K' ? 'active' : ''}`}
+                                        onClick={() => setTemperatureUnit('K')}
+                                    >
+                                        K
+                                    </button>
+                                </div>
+                            )}
                             <h3>Analysis Details</h3>
-                            <p className="detail-description">{results.detailDescription}</p>
+                            <p className="detail-description">{detailDescription}</p>
                             
                             <h3 style={{marginTop: '15px'}}>Visualization</h3>
                             <DistributionChart 
                                 mean={results.historicalMean}
                                 threshold={results.threshold}
                                 unit={results.unit}
+                                displayUnit={temperatureUnit} // Le pasamos la unidad seleccionada al gráfico
                             />
                             
                             {results.downloadLink && (

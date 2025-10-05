@@ -1,6 +1,10 @@
 import React from 'react';
 import './ProbabilityCard.css'; // Importa los estilos específicos
 
+// --- MEJORA: Funciones de conversión de temperatura ---
+const kelvinToCelsius = (k) => k - 273.15;
+const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
+
 // Añadimos todas las variables del backend
 const conditionConfig = {
     hot: { 
@@ -30,7 +34,7 @@ const conditionConfig = {
     // Añade más variables aquí si las incluyes en tu backend/mock
 };
 
-const ProbabilityCard = ({ variable, probability, historicalMean, threshold, unit, downloadLink, detailDescription }) => {
+const ProbabilityCard = ({ variable, probability, historicalMean, threshold, unit, downloadLink, detailDescription, displayUnit = 'C' }) => {
     // Determinar la clase de riesgo basada en la probabilidad para cambiar el color
     let riskClass;
     if (probability === -1) {
@@ -44,6 +48,23 @@ const ProbabilityCard = ({ variable, probability, historicalMean, threshold, uni
     }
 
     const config = conditionConfig[variable] || { icon: '❓', label: 'Condición Desconocida' };
+
+    // --- MEJORA: Conversión de unidades para visualización ---
+    let displayMean = historicalMean;
+    let displayThreshold = threshold;
+    let displayUnitSymbol = unit;
+
+    if (unit === 'K' && (variable === 'hot' || variable === 'cold')) {
+        if (displayUnit === 'C') {
+            displayMean = kelvinToCelsius(historicalMean);
+            displayThreshold = kelvinToCelsius(threshold);
+            displayUnitSymbol = '°C';
+        } else if (displayUnit === 'F') {
+            displayMean = kelvinToFahrenheit(historicalMean);
+            displayThreshold = kelvinToFahrenheit(threshold);
+            displayUnitSymbol = '°F';
+        }
+    }
 
     return (
         <div className={`probability-card ${riskClass}`}>
@@ -67,8 +88,8 @@ const ProbabilityCard = ({ variable, probability, historicalMean, threshold, uni
                 </div>
                 
                 <div className="card-details">
-                    <p>Media Histórica (MERRA-2): <strong>{historicalMean} {unit}</strong></p>
-                    <p>Umbral de Condición: <strong>{threshold} {unit}</strong></p>
+                    <p>Media Histórica (MERRA-2): <strong>{displayMean.toFixed(1)} {displayUnitSymbol}</strong></p>
+                    <p>Umbral de Condición: <strong>{displayThreshold.toFixed(1)} {displayUnitSymbol}</strong></p>
                 </div>
                 
                 {/* La descripción detallada del backend */}
