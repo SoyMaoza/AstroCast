@@ -6,7 +6,7 @@ import { IoMdSend } from "react-icons/io";
 // --- MEJORA: URL de API dinámica y robusta para despliegue ---
 // Usa la variable de entorno VITE_BACKEND_URL si está definida (para producción),
 // de lo contrario, usa la URL de desarrollo local.
-const API_URL = import.meta.env.VITE_BACKEND_URL
+const API_URL = import.meta.env.API_KEY
     ? `${import.meta.env.VITE_BACKEND_URL}/api/chat`
     : 'http://localhost:3001/api/chat';
 

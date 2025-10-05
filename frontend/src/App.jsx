@@ -33,6 +33,7 @@ function App() {
           }
         />
         <Route path="/faq" element={<Faq />} />
+        <Route path="/history" element={<Faq />} />
       </Routes>
 
       {/* 🔥 Chatbox ahora está global, fuera de Routes */}
