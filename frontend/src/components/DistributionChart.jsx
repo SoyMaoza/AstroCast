@@ -15,20 +15,33 @@ const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
  */
 const generateBellCurveData = (mean, stdDev) => {
     const data = [];
-    // Generamos puntos desde -3.5 a +3.5 desviaciones estándar de la media
+    // We generate points from -3.5 to +3.5 standard deviations from the mean
     for (let i = -3.5; i <= 3.5; i += 0.1) {
         const x = mean + i * stdDev;
-        // Fórmula de la densidad de probabilidad de la distribución normal
+        // Formula for the probability density of the normal distribution
         const y = (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / stdDev, 2));
-        data.push({ x: parseFloat(x.toFixed(2)), y: y });
+        // --- FIX: Remove x-value rounding to prevent "stair-ish" lines on small scales ---
+        data.push({ x: x, y: y });
     }
     return data;
 };
 
 const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
-    // Asumimos una desviación estándar para la visualización. 
-    // Un valor entre 5 y 10 suele funcionar bien para temperaturas en K.
-    const stdDev = 8; 
+    // --- IMPROVEMENT: Dynamic standard deviation for better visualization ---
+    // The standard deviation is adjusted based on the unit of the variable
+    // to ensure the bell curve has a readable scale.
+    let stdDev;
+    if (unit && unit.includes('fraction')) { // For cloudy (0-1 scale)
+        stdDev = 0.15;
+    } else if (unit === 'mm/day') { // For rainy/snowy
+        // Use a fraction of the mean, but with a minimum value to handle means of 0.
+        stdDev = Math.max(mean * 0.5, 2); 
+    } else if (unit === 'kg/kg') { // For humid
+        stdDev = 0.002;
+    } else { // Default for temperature (K) and wind (m/s)
+        stdDev = 8;
+    }
+
 
     // --- NEW: State to control a simple fade-in animation for all elements ---
     const [animatedOpacity, setAnimatedOpacity] = useState(0);
@@ -145,7 +158,7 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
                         style={{ transition: 'stroke-opacity 0.8s ease-out 0.2s' }} // Staggered animation
                     >
                         <Label 
-                            value={`Average: ${displayMean.toFixed(1)}`} 
+                            value={`Average: ${displayMean.toFixed(2)}`} 
                             position="top" 
                             fill="#1E88E5"
                             fontSize={12} 
@@ -162,7 +175,7 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
                     >
                         {/* --- MEJORA: Posiciona la etiqueta dentro del área de riesgo si está muy cerca de la media --- */}
                         <Label 
-                            value={`Limit: ${displayThreshold.toFixed(1)}`} 
+                            value={`Limit: ${displayThreshold.toFixed(2)}`} 
                             position={areLabelsClose ? "insideTopRight" : "top"}
                             fill="#F44336" 
                             fontSize={12} 
