@@ -21,9 +21,6 @@ const Navbar = () => {
                 <Link to="/faq" className={`nav-link ${isActive('/info') ? 'active' : ''}`}>
                     FAQ
                 </Link>
-                <Link to="/equipo" className={`nav-link ${isActive('/equipo') ? 'active' : ''}`}>
-                    Team
-                </Link>
             </div>
             <div className="navbar-right">
                 <button className="icon-button">
