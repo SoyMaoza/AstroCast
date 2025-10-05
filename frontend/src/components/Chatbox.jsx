@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import "./Chatbox.css";
 import { MdOutlineMessage } from "react-icons/md";
 import { IoMdSend } from "react-icons/io";
+import { useNavigate } from "react-router-dom"; // --- MEJORA: Importar hook de navegación ---
 
 // --- MEJORA: URL de API dinámica y robusta para despliegue ---
 // Usa la variable de entorno VITE_BACKEND_URL si está definida (para producción),
@@ -23,6 +24,7 @@ const Chatbox = ({ location, date, variable }) => {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const navigate = useNavigate(); // --- MEJORA: Inicializar hook de navegación ---
 
   // --- ESTADOS DE WHATSAPP ---
   const [isSharing, setIsSharing] = useState(false);
@@ -32,6 +34,18 @@ const Chatbox = ({ location, date, variable }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // --- MEJORA: Manejador de clics para enlaces internos ---
+  useEffect(() => {
+    const handleInternalLinkClick = (e) => {
+      if (e.target.tagName === 'A' && e.target.getAttribute('href')?.startsWith('/')) {
+        e.preventDefault();
+        navigate(e.target.getAttribute('href'));
+      }
+    };
+    document.addEventListener('click', handleInternalLinkClick);
+    return () => document.removeEventListener('click', handleInternalLinkClick);
+  }, [navigate]);
 
   /**
    * --- FUNCIÓN MODIFICADA ---
@@ -45,9 +59,9 @@ const Chatbox = ({ location, date, variable }) => {
     // 1. Convierte **negritas** a <strong>negritas</strong>
     formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     
-    // 2. Convierte links de Markdown [texto](url) a <a href="url">texto</a>
+    // 2. Convierte links de Markdown [texto](url) a <a href="url">texto</a> (ahora soporta links relativos)
     formattedText = formattedText.replace(
-      /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
+      /\[(.*?)\]\(([^)]+)\)/g,
       '<a href="$2">$1</a>' // Se quitó target="_blank"
     );
 
@@ -106,10 +120,12 @@ const Chatbox = ({ location, date, variable }) => {
 
       const data = await response.json();
 
+      // Añadir la respuesta del bot
       setMessages((prev) => [
         ...prev,
         { id: Date.now() + 1, sender: "bot", text: data.text },
       ]);
+
     } catch (error) {
       console.error("Error en el chat:", error);
       setMessages((prev) => [

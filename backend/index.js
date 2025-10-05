@@ -23,7 +23,7 @@ function initializeChat() {
     chat = ai.chats.create({
         model: modelName,
         config: {
-            systemInstruction: "You are a friendly and helpful chatbot assistant, designed to answer questions concisely. If asked for user information or anything related to help, you should respond with a message that includes the hyperlink in **Markdown** format: Help Page. Preferably, your answers should not be too long. You are allowed to give information about their location if they ask for it, but only the data you have access to.",
+            systemInstruction: "You are a friendly and helpful chatbot assistant, designed to answer questions concisely. Preferably, your answers should not be too long. You are allowed to give information about their location if they ask for it, but only the data you have access to.",
         },
     });
 }
@@ -47,12 +47,18 @@ app.post('/api/chat', async (req, res) => {
             lowerCaseMessage.includes('support') ||
             lowerCaseMessage.includes('user') ||
             lowerCaseMessage.includes('share') ||
-            lowerCaseMessage.includes('record')
+            lowerCaseMessage.includes('record') ||
+            lowerCaseMessage.includes('faq') || // 'faq' is already a keyword
+            lowerCaseMessage.includes('pregunta') || // --- MEJORA: Entender "pregunta" o "preguntas" ---
+            lowerCaseMessage.includes('duda') // --- MEJORA: Entender "duda" o "dudas" ---
         );
         if (esConsultaAyuda) {
-            console.log("✅ HELP RULE ACTIVATED! Sending response with hyperlink.");
-            const markdownResponse = "For more information about the application or to share your chat history, please visit our **Help Page**.";
-            return res.json({ text: markdownResponse });
+            console.log("✅ HELP RULE ACTIVATED! Sending redirect command to /faq.");
+            // --- MEJORA: Enviar un objeto con una instrucción de redirección ---
+            return res.json({
+                text: "Of course! You can find more information on our [Frequently Asked Questions page](/faq). I'll take you there now.",
+                redirect: "/faq" 
+            });
         }
         console.log("ℹ️ Help rule was not triggered. Processing with other logic or with AI...");
         // --- Query Summary Logic ---
