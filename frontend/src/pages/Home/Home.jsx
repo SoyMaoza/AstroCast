@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Home.css';
 import ProbabilityCard from '../../components/ProbabilityCard';
-import Gauge from '../../components/Gauge';
-import { FaSearch } from 'react-icons/fa';
+import Gauge from '../../components/Gauge'; // --- NUEVO: Importar el componente Gauge ---
+import { FaSearch } from 'react-icons/fa'; // Importamos el ícono de búsqueda
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import DistributionChart from '../../components/DistributionChart';
 // El Chatbox ya no se importa ni se renderiza aquí, vive en App.jsx
@@ -15,14 +15,14 @@ const kelvinToCelsius = (k) => k - 273.15;
 const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
 
 const VARIABLES = [
-  { value: 'warm', label: '☀️ Very Warm' },
-  { value: 'cold', label: '🥶 Very Cold' },
-  { value: 'windy', label: '💨 Very Windy' },
-  { value: 'humid', label: '💧 Very Humid' },
-  { value: 'rainy', label: '🌧️ Very Rainy' },
-  { value: 'snowy', label: '❄️ Very Snowy' },
-  { value: 'cloudy', label: '☁️ Very Cloudy' },
-  { value: 'dusty', label: '🌪️ Very Dusty' },
+    { value: 'warm', label: '☀️ Very Warm' },
+    { value: 'cold', label: '🥶 Very Cold' },
+    { value: 'windy', label: '💨 Very Windy' },
+    { value: 'humid', label: '💧 Very Humid' },
+    { value: 'rainy', label: '🌧️ Very Rainy' },
+    { value: 'snowy', label: '❄️ Very Snowy' },
+    { value: 'cloudy', label: '☁️ Very Cloudy' },
+    { value: 'dusty', label: '🌪️ Very Dusty' },
 ];
 
 delete L.Icon.Default.prototype._getIconUrl;

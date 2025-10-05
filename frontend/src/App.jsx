@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home/Home";
 import Faq from "./pages/faq/faq";
+import History from "./pages/History/History"; // 1. Importar el componente History
 import Chatbox from "./components/Chatbox";
 
 function App() {
