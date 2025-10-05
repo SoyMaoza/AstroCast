@@ -10,7 +10,9 @@ import 'leaflet/dist/leaflet.css';
 import html2canvas from 'html2canvas';
 import L from 'leaflet';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+// Use the environment variable for the backend URL in production,
+// otherwise fall back to the local URL for development.
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
 
 const kelvinToCelsius = (k) => k - 273.15;
 const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
