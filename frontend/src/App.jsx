@@ -11,7 +11,7 @@ function App() {
   // 🔥 Estados globales (antes estaban en Home.jsx)
   const [location, setLocation] = useState({ lat: 19.43, lon: -99.13 });
   const [date, setDate] = useState({ day: 1, month: 1 });
-  const [variable, setVariable] = useState("calido");
+  const [variable, setVariable] = useState("warm");
 
   return (
     <BrowserRouter>

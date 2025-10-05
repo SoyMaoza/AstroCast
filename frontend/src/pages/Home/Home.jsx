@@ -303,6 +303,9 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
             zoom={5} 
             scrollWheelZoom 
             style={{ height: '100%', width: '100%', borderRadius: '8px' }}
+            maxBounds={[[-85.0511, -Infinity], [85.0511, Infinity]]} /* Limits vertical panning but allows infinite horizontal scroll */
+            maxBoundsViscosity={1.0}                                 /* Makes the vertical boundaries solid */
+            minZoom={1}                                  /* Prevents zooming out too far */
           >
             <TileLayer
               attribution='&copy; OpenStreetMap'
