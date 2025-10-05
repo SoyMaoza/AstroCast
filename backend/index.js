@@ -49,66 +49,87 @@ app.post('/api/chat', async (req, res) => {
     console.log("\n\n--- New Request to /api/chat ---");
     console.log("Request body received:", req.body);
     // --- END OF NEW DIAGNOSTIC LOGS ---
-    const { message, lat, lon, date, variable } = req.body;
+
+    // ✅ 1. Recibimos 'activity' junto con el resto de los datos.
+    const { message, lat, lon, date, variable, activity } = req.body;
+
     if (!message) {
         console.log("❌ Error: Message is empty or does not exist.");
         return res.status(400).json({ error: 'Message is required.' });
     }
+
     try {
         const lowerCaseMessage = message.toLowerCase();
-        console.log("Lowercase message for analysis:", `"${lowerCaseMessage}"`); // Log to see the message
+        console.log("Lowercase message for analysis:", `"${lowerCaseMessage}"`);
+
         const esConsultaAyuda = (
             lowerCaseMessage.includes('help') ||
             lowerCaseMessage.includes('support') ||
             lowerCaseMessage.includes('user') ||
             lowerCaseMessage.includes('share') ||
             lowerCaseMessage.includes('record') ||
-            lowerCaseMessage.includes('faq') || // 'faq' is already a keyword
-            lowerCaseMessage.includes('help') || // --- MEJORA: Entender "pregunta" o "preguntas" ---
-            lowerCaseMessage.includes('question') || // --- MEJORA: Entender "pregunta" o "preguntas" ---
-            lowerCaseMessage.includes('doubt') // --- MEJORA: Entender "duda" o "dudas" ---
+            lowerCaseMessage.includes('faq') ||
+            lowerCaseMessage.includes('question') ||
+            lowerCaseMessage.includes('doubt')
         );
+
         if (esConsultaAyuda) {
             console.log("✅ HELP RULE ACTIVATED! Sending redirect command to /faq.");
-            // --- MEJORA: Enviar un objeto con una instrucción de redirección ---
             return res.json({
                 text: "Of course! You can find more information on our [Frequently Asked Questions page](/faq). I'll take you there now.",
-                redirect: "/faq" 
+                redirect: "/faq"
             });
         }
         console.log("ℹ️ Help rule was not triggered. Processing with other logic or with AI...");
-        // --- Query Summary Logic ---
+
+        // --- Lógica de Resumen de Consulta ---
         const requestSummaryConsultation = (lat && lon && date) &&
         (lowerCaseMessage.includes('information') ||
         lowerCaseMessage.includes('data') ||
         lowerCaseMessage.includes('latitude') ||
         lowerCaseMessage.includes('longitude'));
+
         if (requestSummaryConsultation) {
             console.log("✅ Summary logic activated.");
-            const answerTest = `Of course! Here is the data for the query you have selected:\n\n- **Location:**\n  - Latitude: ${lat}\n  - Longitude: ${lon}\n- **Selected Date:**\n  - Month: ${date.split('-')[0]}\n  - Day: ${date.split('-')[1]}\n- **Condition to Analyze:** ${variable || 'Not selected'}\n\nIf you want me to analyze the weather for this data, just ask something like: "tell me the weather forecast".`;
+            // ✅ 2. Añadimos la 'activity' al texto de resumen.
+            const answerTest = `Of course! Here is the data for the query you have selected:\n\n- **Location:**\n  - Latitude: ${lat}\n  - Longitude: ${lon}\n- **Selected Date:**\n  - Month: ${date.split('-')[0]}\n  - Day: ${date.split('-')[1]}\n- **Condition to Analyze:** ${variable || 'Not selected'}\n- **Activity:** ${activity || 'Not specified'}\n\nIf you want me to analyze the weather for this data, just ask something like: "tell me the weather forecast".`;
             return res.json({ text: answerTest });
         }
-        // --- Climate Logic ---
+
+        // --- Lógica de Clima ---
         const esConsultaClima = (lat && lon && date) &&
         (lowerCaseMessage.includes('weather') ||
         lowerCaseMessage.includes('pronóstico') ||
         lowerCaseMessage.includes('weather') ||
         lowerCaseMessage.includes('forecast') ||
         lowerCaseMessage.includes('dime'));
+
         let responseText;
         if (esConsultaClima) {
             console.log("✅ Climate logic activated.");
             const estadisticas = await obtenerEstadisticasHistoricas({ lat: parseFloat(lat), lon: parseFloat(lon) }, date, new Date().getFullYear() - 5, new Date().getFullYear() - 1);
             const resumenDatos = estadisticas.generarTextoResumen();
-            const promptMejorado = `Based on the following historical data for the location with latitude ${lat} and longitude ${lon} on the date ${date}, answer the user's question in a friendly and conversational way. Explain what these probabilities mean. Do not mention the years analyzed unless asked.\n\nHistorical Analysis Data:\n${resumenDatos}\n\nUser's question: "${message}"`;
+            
+            // ✅ 3. ¡MEJORA CRÍTICA! Le damos el contexto de la actividad a la IA.
+            // Ahora la IA podrá dar consejos como "para una boda, ese 20% de lluvia significa que deberías considerar una carpa".
+            const promptMejorado = `Based on the following historical data for the location with latitude ${lat} and longitude ${lon} on the date ${date}, answer the user's question in a friendly and conversational way.
+            The user is planning this activity: "${activity || 'no specific activity'}".
+            Use the context of the activity to make your recommendations more specific and useful.
+            Explain what these probabilities mean for their activity. Do not mention the years analyzed unless asked.\n\nHistorical Analysis Data:\n${resumenDatos}\n\nUser's question: "${message}"`;
+
             const response = await chat.sendMessage({ message: promptMejorado });
             responseText = response.text;
         } else {
             console.log("🤖 Sending message to Gemini AI...");
-            const response = await chat.sendMessage({ message: message });
+            // ✅ 4. MEJORA OPCIONAL: Incluso para mensajes generales, damos contexto a la IA.
+            const contextualPrompt = `The user has this context loaded in their session: Location (Lat: ${lat}, Lon: ${lon}), Date: ${date}, Planned Activity: "${activity || 'none'}".
+            \nBased on this context, answer the user's question: "${message}"`;
+            
+            const response = await chat.sendMessage({ message: contextualPrompt });
             responseText = response.text;
         }
         return res.json({ text: responseText });
+
     } catch (error) {
         console.error('❌ Error communicating with the Gemini API:', error);
         res.status(500).json({ error: 'Internal server error while processing chat.' });

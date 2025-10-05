@@ -2,17 +2,15 @@ import React, { useState, useRef, useEffect } from "react";
 import "./Chatbox.css";
 import { MdOutlineMessage } from "react-icons/md";
 import { IoMdSend } from "react-icons/io";
-import { useNavigate } from "react-router-dom"; // --- MEJORA: Importar hook de navegación ---
+import { useNavigate } from "react-router-dom"; 
 
-// --- MEJORA: URL de API dinámica y robusta para despliegue ---
-// Usa la variable de entorno VITE_BACKEND_URL si está definida (para producción),
-// de lo contrario, usa la URL de desarrollo local.
 const API_URL = import.meta.env.API_KEY
     ? `${import.meta.env.VITE_BACKEND_URL}/api/chat`
     : 'http://localhost:3001/api/chat';
 
 
-const Chatbox = ({ location, date, variable }) => {
+// ✅ --- NUEVO: Recibe 'activity' como prop ---
+const Chatbox = ({ location, date, variable, activity }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -24,18 +22,15 @@ const Chatbox = ({ location, date, variable }) => {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
-  const navigate = useNavigate(); // --- MEJORA: Inicializar hook de navegación ---
+  const navigate = useNavigate();
 
-  // --- ESTADOS DE WHATSAPP ---
   const [isSharing, setIsSharing] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState("");
-  // ----------------------------
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // --- MEJORA: Manejador de clics para enlaces internos ---
   useEffect(() => {
     const handleInternalLinkClick = (e) => {
       if (e.target.tagName === 'A' && e.target.getAttribute('href')?.startsWith('/')) {
@@ -47,31 +42,18 @@ const Chatbox = ({ location, date, variable }) => {
     return () => document.removeEventListener('click', handleInternalLinkClick);
   }, [navigate]);
 
-  /**
-   * --- FUNCIÓN MODIFICADA ---
-   * Convierte texto a HTML. Los links ahora se abren en la misma pestaña.
-   * @param {string} text - El texto a formatear.
-   * @returns {string} - Un string con etiquetas HTML.
-   */
   const formatMessageToHTML = (text) => {
     let formattedText = text;
-
-    // 1. Convierte **negritas** a <strong>negritas</strong>
     formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // 2. Convierte links de Markdown [texto](url) a <a href="url">texto</a> (ahora soporta links relativos)
     formattedText = formattedText.replace(
       /\[(.*?)\]\(([^)]+)\)/g,
-      '<a href="$2">$1</a>' // Se quitó target="_blank"
+      '<a href="$2">$1</a>'
     );
-
-    // 3. Convierte links de texto plano (http://...) a hipervínculos clickeables.
     const urlRegex = /(?<!href=")(?<!\]\()((https?:\/\/[^\s]+))/g;
     formattedText = formattedText.replace(
         urlRegex, 
-        '<a href="$1">$1</a>' // Se quitó target="_blank"
+        '<a href="$1">$1</a>'
     );
-    
     return formattedText;
   };
 
@@ -104,10 +86,10 @@ const Chatbox = ({ location, date, variable }) => {
           message: userMessage,
           lat: location.lat,
           lon: location.lon,
-          // --- CORRECCIÓN: Enviar la fecha como objeto para consistencia ---
           day: parseInt(date.day),
           month: parseInt(date.month),
           variable: variable,
+          activity: activity // ✅ --- NUEVO: Envía la actividad en la solicitud del chat ---
         }),
       });
 
@@ -120,7 +102,6 @@ const Chatbox = ({ location, date, variable }) => {
 
       const data = await response.json();
 
-      // Añadir la respuesta del bot
       setMessages((prev) => [
         ...prev,
         { id: Date.now() + 1, sender: "bot", text: data.text },
@@ -246,9 +227,6 @@ const Chatbox = ({ location, date, variable }) => {
           )}
         </div>
       )}
-      {/* --- CORRECCIÓN: Se restaura la estructura original del contenedor --- */}
-      {/* El botón de apertura ahora está dentro del mismo contenedor que el chat, */}
-      {/* pero solo se renderiza si el chat está cerrado. */}
       <div className="chat-toggle-container">
         {!isOpen && (
           <button onClick={toggleChat} className="chat-toggle-btn">

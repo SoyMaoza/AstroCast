@@ -9,22 +9,8 @@ import Chatbox from '../../components/Chatbox';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// 🌐 --- CONFIGURACIÓN ROBUSTA DE URL BASE ---
-// 1️⃣ Usa la URL del backend desde .env si existe
-// 2️⃣ Elimina cualquier slash extra al final para evitar "//"
-// 3️⃣ Si no hay variable definida, usa el hostname local dinámico
-// const backendHostname = import.meta.env.VITE_BACKEND_URL
-//   ? import.meta.env.VITE_BACKEND_URL.replace(/\/+$/, '')
-//   : (typeof window !== 'undefined'
-//       ? `http://${window.location.hostname}:3001`
-//       : 'http://localhost:3001');
-
 // 🔹 URL base para todos los endpoints de API
 const API_BASE_URL = 'http://localhost:3001/api'
-
-
-// 🔹 URL específica para chat (opcional)
-const CHAT_API_URL = `${API_BASE_URL}/chat`;
 
 // 🌡️ Conversión de unidades
 const kelvinToCelsius = (k) => k - 273.15;
@@ -78,6 +64,9 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
   const [error, setError] = useState(null);
   const [temperatureUnit, setTemperatureUnit] = useState('C');
   const resultsRef = useRef(null);
+  
+  // ✅ --- NUEVO: Estado para la actividad ---
+  const [activity, setActivity] = useState("");
 
   useEffect(() => {
     if (results && resultsRef.current) {
@@ -95,6 +84,11 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
     const { name, value } = e.target;
     const sanitizedValue = value.replace(/\./g, '');
     setDate(prev => ({ ...prev, [name]: sanitizedValue.slice(0, 2) }));
+  };
+  
+  // ✅ --- NUEVO: Manejador para el cambio de actividad ---
+  const handleActivityChange = (e) => {
+    setActivity(e.target.value);
   };
 
   const handleDateKeyDown = (e) => {
@@ -141,6 +135,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
     setLoading(true);
     setError(null);
     setResults(null);
+    
 
     const dateError = validateDate(date.day, date.month);
     if (dateError) {
@@ -158,7 +153,9 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
           lon: parseFloat(location.lon),
           day: parseInt(date.day),
           month: parseInt(date.month),
-          variable
+          variable,
+          activity // ✅ --- NUEVO: Envía la actividad al backend ---
+          
         })
       });
 
@@ -168,8 +165,9 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
       }
 
       const data = await response.json();
+      console.log('1. ANÁLISIS EXITOSO EN HOME.JSX:', data); 
+      
       setResults(data);
-
     } catch (err) {
       console.error("API query error:", err);
       setError(err.message || 'Unknown error connecting to the data service.');
@@ -182,7 +180,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
   const handleDownload = () => {
     const { lat, lon } = location;
     const { day, month } = date;
-    let downloadUrl = `${API_BASE_URL}/download-data?lat=${lat}&lon=${lon}&day=${day}&month=${month}&variable=${variable}&format=json`;
+    // ✅ --- NUEVO: Añade la actividad a la URL de descarga ---
+    let downloadUrl = `${API_BASE_URL}/download-data?lat=${lat}&lon=${lon}&day=${day}&month=${month}&variable=${variable}&activity=${encodeURIComponent(activity)}&format=json`;
 
     if (['warm', 'cold'].includes(variable)) {
       downloadUrl += `&displayUnit=${temperatureUnit}`;
@@ -248,6 +247,19 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
             <input id="day-input" type="number" name="day" min="1" max="31" value={date.day} onChange={handleDateChange} onKeyDown={handleDateKeyDown} />
             <label>📅 Month:</label>
             <input id="month-input" type="number" name="month" min="1" max="12" value={date.month} onChange={handleDateChange} onKeyDown={handleDateKeyDown} />
+          </div>
+          
+          {/* ✅ --- NUEVO: Campo de entrada para la actividad --- */}
+          <div className="input-group">
+            <label>🏃 Activity (Optional):</label>
+            <input 
+              type="text" 
+              name="activity" 
+              value={activity} 
+              onChange={handleActivityChange}
+              placeholder="e.g., hiking, picnic, wedding"
+              style={{ width: '100%' }} // Estilo simple para que ocupe todo el ancho
+            />
           </div>
 
           <div className="variable-selector">
@@ -341,8 +353,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
         </div>
       )}
 
-      {/* Chat */}
-      <Chatbox location={location} date={date} variable={variable} />
+      {/* ✅ --- NUEVO: Pasa la actividad al Chatbox --- */}
+<Chatbox location={location} date={date} variable={variable} activity={activity} />
     </div>
   );
 };
