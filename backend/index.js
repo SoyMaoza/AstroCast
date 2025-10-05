@@ -161,6 +161,8 @@ const HistoricalStat = mongoose.model("HistoricalStat", HistoricalStatSchema);
 // Se usarán como plantillas para construir la URL final.
 const MERRA2_SLV_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXSLV.5.12.4";
 const MERRA2_AER_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXAER.5.12.4";
+const MERRA2_INT_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXINT.5.12.4"; // <-- AÑADIDO: Dataset para nieve
+const MERRA2_RAD_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXRAD.5.12.4"; // <-- AÑADIDO: Dataset para nubes/radiación
 const GPM_IMERG_URL_TEMPLATE = "https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDF.07"; // CORRECCIÓN: GPM no usa el endpoint /hyrax/
 
 
@@ -219,14 +221,14 @@ const CONFIG_VARIABLES_NASA = {
     },
     nevado: {
         apiVariable: "PRECSN", // Precipitación de Nieve
-        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        datasetUrlTemplate: MERRA2_INT_URL_TEMPLATE, // <-- CORRECCIÓN: Usar el dataset correcto para nieve.
         unit: "mm/día",
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
     },
     nublado: {
         apiVariable: "CLDTOT", // Fracción Total de Nubes
-        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        datasetUrlTemplate: MERRA2_RAD_URL_TEMPLATE, // <-- CORRECCIÓN: Usar el dataset correcto para nubes.
         unit: "%", // La API lo da como fracción (0-1), lo convertiremos
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
@@ -439,7 +441,13 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
         } else {
             // Formato de archivo para MERRA-2
             const filePrefix = getMerra2FilePrefix(year);
-            const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
+            // --- CORRECCIÓN: Determinar el tipo de dataset (slv, aer, int) dinámicamente ---
+            let datasetType;
+            if (config.datasetUrlTemplate.includes('AER')) datasetType = 'aer';
+            else if (config.datasetUrlTemplate.includes('INT')) datasetType = 'int';
+            else if (config.datasetUrlTemplate.includes('RAD')) datasetType = 'rad';
+            else datasetType = 'slv';
+
             datasetFileName = `MERRA2_${filePrefix}.tavg1_2d_${datasetType}_Nx.${year}${monthStr}${dayStr}.nc4`;
         }
 
@@ -518,12 +526,35 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
                         // CORRECCIÓN: GPM Daily (GPM_3IMERGDF) viene en mm/hr. Se debe multiplicar por 24 para obtener mm/día.
                         // El valor es un array con un solo elemento.
                         simpleData = [simpleData[0] * 24];
-                    } else if (variableName === 'nevado') { // Asumiendo que nevado usará MERRA-2 (kg m-2 s-1)
-                        simpleData = simpleData.map(v => v * 86400);
+                    } else if (config.apiVariable === 'PRECSN') { // Lógica para Nieve
+                        // --- LÓGICA DE CONVERSIÓN PARA NIEVE ---
+                        // PRECSN es un flujo (kg m-2 s-1). Para obtener el total diario en mm:
+                        const sumOfHourlyRates = simpleData.reduce((total, rateStr) => total + (parseFloat(rateStr) || 0), 0);
+                        const totalNieveDiaria = sumOfHourlyRates * 3600;
+
+                        simpleData = [totalNieveDiaria]; // Devolvemos un solo valor diario.
+                    } else if (config.apiVariable === 'T2M') {
+                        // --- LÓGICA DIFERENCIADA PARA CALOR Y FRÍO ---
+                        if (config.isBelowThresholdWorse === false) { // Esto es 'calido'
+                            // Para 'calido', nos interesa el MÁXIMO del día.
+                            const maxTempOfDay = Math.max(...simpleData.filter(v => isFinite(v)));
+                            simpleData = isFinite(maxTempOfDay) ? [maxTempOfDay] : [];
+                        } else { // Esto es 'frio'
+                            // Para 'frio', nos interesa el MÍNIMO del día.
+                            const minTempOfDay = Math.min(...simpleData.filter(v => isFinite(v)));
+                            simpleData = isFinite(minTempOfDay) ? [minTempOfDay] : [];
+                        }
+                    } else if (config.apiVariable === 'CLDTOT') {
+                        // Para 'nublado', promediamos la fracción de nubes del día y la convertimos a porcentaje.
+                        const sumOfHourlyFractions = simpleData.reduce((total, fracStr) => total + (parseFloat(fracStr) || 0), 0);
+                        const averageDailyFraction = sumOfHourlyFractions / simpleData.length;
+
+                        simpleData = [averageDailyFraction * 100]; // Convertir a porcentaje (0-100)
                     }
 
                     console.log(`[NASA API] Descarga para el año ${year} completada. URL: ${dataUrl}`);
-                    console.log(`       Valores (${config.apiVariable}): [${simpleData.map(v => v.toFixed(5)).join(', ')}]`); // MEJORA: Mostrar más decimales
+                    // --- CORRECCIÓN DE LOG DEFINITIVA: Mostrar el valor diario TOTAL calculado con 8 decimales. ---
+                    console.log(`       Total Diario Calculado (${config.apiVariable}): [${simpleData[0].toFixed(8)}]`);
                     return simpleData;
                 }
             };
@@ -645,7 +676,13 @@ app.post("/api/climate-probability", async (req, res) => {
         } else {
             // Para MERRA-2, usamos un año de referencia para obtener la grilla.
             const referenceYear = '2016';
-            const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
+            // --- CORRECCIÓN: Determinar el tipo de dataset (slv, aer, int) dinámicamente ---
+            let datasetType;
+            if (config.datasetUrlTemplate.includes('AER')) datasetType = 'aer';
+            else if (config.datasetUrlTemplate.includes('INT')) datasetType = 'int';
+            else if (config.datasetUrlTemplate.includes('RAD')) datasetType = 'rad';
+            else datasetType = 'slv';
+
             const referenceFilePrefix = getMerra2FilePrefix(referenceYear);
             const referenceDatasetFileName = `MERRA2_${referenceFilePrefix}.tavg1_2d_${datasetType}_Nx.${referenceYear}${monthStr}${dayStr}.nc4`;
             referenceDatasetUrl = `${config.datasetUrlTemplate}/${referenceYear}/${monthStr}/${referenceDatasetFileName}`;
@@ -670,8 +707,8 @@ app.post("/api/climate-probability", async (req, res) => {
         let probability;
         // Escalas absolutas para cada variable
         switch (variable) {
-            case 'calido': // Escala de 20°C (293.15K) a 35°C (308.15K)
-                probability = mapRange(stats.mean, 293.15, 308.15, 0, 100);
+            case 'calido': // Escala ajustada para mayor sensibilidad: 24°C (297.15K) a 32°C (305.15K)
+                probability = mapRange(stats.mean, 297.15, 305.15, 0, 100);
                 break;
             case 'frio': // NUEVA ESCALA: 20°C (293.15K) a 0°C (273.15K)
                 probability = mapRange(stats.mean, 293.15, 273.15, 0, 100);
@@ -698,11 +735,14 @@ app.post("/api/climate-probability", async (req, res) => {
                 probability = totalDias > 0 ? ((diasConLluvia + 1) / (totalDias + 2)) * 100 : 0;
                 break;
             }
-            case 'nevado':
-                probability = 0; // Lógica pendiente
+            case 'nevado': {
+                // Escala ajustada: 0 mm/día -> 0%, 10 mm/día (~10 cm de nieve) -> 100%
+                probability = mapRange(stats.mean, 0, 10, 0, 100);
                 break;
+            }
             case 'nublado':
-                probability = 0; // Lógica pendiente
+                // Para nublado, la media histórica (que ya está en %) es directamente la probabilidad.
+                probability = stats.mean;
                 break;
             default:
                 // Fallback por si se añade una variable sin escala definida

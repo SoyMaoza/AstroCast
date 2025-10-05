@@ -23,7 +23,6 @@ const VARIABLES = [
     { value: 'lluvioso', label: '🌧️ Muy Lluvioso' },
     { value: 'nevado', label: '❄️ Mucha Nieve' },
     { value: 'nublado', label: '☁️ Muy Nublado' },
-    { value: 'incomodo', label: '🥵 Muy Incómodo' },
     { value: 'polvo', label: '🌪️ Mucho Polvo' },
 ];
 
