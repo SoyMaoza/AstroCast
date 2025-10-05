@@ -190,6 +190,7 @@ const CONFIG_VARIABLES_NASA = {
     rainy: {
         apiVariable: "precipitation", // FINAL FIX: The variable in GPM IMERG V7 is 'precipitation'.
         datasetUrlTemplate: GPM_IMERG_URL_TEMPLATE,
+        unit: "mm/day", // FIX: Add the unit for precipitation
         startYear: 1998, // GPM IMERG data starts in June 1998
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,

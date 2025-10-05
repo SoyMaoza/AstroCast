@@ -12,12 +12,16 @@ import L from 'leaflet';
 
 
 
-// --- MEJORA: URL de API dinámica y robusta para despliegue ---
-// Usa la variable de entorno VITE_BACKEND_URL si está definida (para producción),
-// de lo contrario, usa la URL de desarrollo local.
-const API_URL = import.meta.env.VITE_BACKEND_URL 
-    ? `${import.meta.env.VITE_BACKEND_URL}/api/climate-probability`
-    : 'http://localhost:3001/api/climate-probability';
+// --- MEJORA COMBINADA: URL de API base, dinámica y robusta ---
+// 1. Si VITE_BACKEND_URL está definida (para producción), la usa.
+// 2. Si no, usa el hostname actual de la ventana (para desarrollo en red local).
+// 3. Si todo falla (ej. en un entorno sin window), usa 'localhost'.
+const backendHostname = import.meta.env.VITE_BACKEND_URL
+    ? import.meta.env.VITE_BACKEND_URL
+    : (typeof window !== 'undefined' ? `http://${window.location.hostname}:3001` : 'http://localhost:3001');
+
+const API_BASE_URL = `${backendHostname}/api`;
+
 const kelvinToCelsius = (k) => k - 273.15;
 const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
 
@@ -373,8 +377,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                                     Based on historical data, there is a <strong>{results.probability}%</strong> chance of this condition occurring.
                                 </p>
                                 <p>
-                                    {/* --- CORRECCIÓN: Usar las variables de visualización --- */}
-                                    The historical average for this day is <strong>{displayMean.toFixed(1)} {displayUnitSymbol}</strong>.
+                                    {/* --- FIX: Show 2 decimal places for rain, 1 for others --- */}
+                                    The historical average for this day is <strong>{displayMean.toFixed(results.variable === 'rainy' ? 2 : 1)} {displayUnitSymbol}</strong>.
                                 </p>
                                 <button className="download-json-btn" onClick={handleDownload}>
                                     Download Raw Data (JSON)
