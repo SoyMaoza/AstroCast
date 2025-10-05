@@ -1,5 +1,8 @@
 /* src/styles/HomePage.css */
 
+/* --- IMPROVEMENT: Import a clean, modern font for the entire application --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 /* Variables de Color (de tu diseño amigable) */
 :root {
     --color-background-light: #F0F4F8; /* Azul Nieve */
@@ -11,6 +14,12 @@
     --color-border-subtle: rgba(0, 0, 0, 0.1);
     --color-warning-orange: #FF9800; 
     --color-error-red: #F44336;
+}
+
+/* --- IMPROVEMENT: Apply the new font and a consistent background color --- */
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--color-background-light);
 }
 
 .homepage-container {
@@ -349,4 +358,43 @@
     background-color: var(--color-card-bg);
     color: var(--color-primary-indigo);
     box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+
+/* --- Styles for Chart Download Button --- */
+.chart-actions {
+  display: flex;
+  justify-content: flex-end; /* Aligns button to the right */
+  /* --- FIX: Adjust position to be more up and left --- */
+  position: relative; /* Needed for z-index */
+  z-index: 10; /* Ensure it's on top of the chart */
+  margin-top: -20px; /* Move the button up to overlap the chart */
+  padding-right: 30px; /* Move the button a bit to the left from the edge */
+}
+
+.chart-download-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-card-bg); /* Same as card background */
+  border-radius: 6px; /* Consistent with other elements */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chart-download-btn:hover {
+  background-color: var(--color-background-light); /* Subtle hover color */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.chart-download-btn img {
+  width: 20px; /* Slightly smaller than the button for padding */
+  height: 20px;
+  display: block;
+  /* --- FIX: Use a CSS filter to change the icon color from black to a dark gray --- */
+  /* This makes the black SVG appear as a dark gray (#4d4d4d) */
+  filter: brightness(0) invert(0.3);
 }
