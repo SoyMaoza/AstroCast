@@ -14,22 +14,10 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-// ✅ Configurar CORS correctamente
-const allowedOrigins = [
-  'http://localhost:5173',          // Desarrollo local
-  'https://astro-cast.vercel.app',  // Frontend en producción
-];
-
 app.use(cors({
-  origin: function (origin, callback) {
-    // Permite solicitudes sin origen (como Postman o SSR)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    console.warn(`❌ CORS bloqueado para origen: ${origin}`);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true,
+  origin: ['https://astro-cast.vercel.app', 'http://localhost:5173'], // Orígenes permitidos
+  methods: ['GET','POST','OPTIONS'],
+  allowedHeaders: ['Content-Type']
 }));
 
 // ✅ Middleware para parsear JSON
