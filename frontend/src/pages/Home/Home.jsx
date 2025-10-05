@@ -13,14 +13,14 @@ import L from 'leaflet';
 // 1️⃣ Usa la URL del backend desde .env si existe
 // 2️⃣ Elimina cualquier slash extra al final para evitar "//"
 // 3️⃣ Si no hay variable definida, usa el hostname local dinámico
-const backendHostname = import.meta.env.VITE_BACKEND_URL
-  ? import.meta.env.VITE_BACKEND_URL.replace(/\/+$/, '')
-  : (typeof window !== 'undefined'
-      ? `http://${window.location.hostname}:3001`
-      : 'http://localhost:3001');
+// const backendHostname = import.meta.env.VITE_BACKEND_URL
+//   ? import.meta.env.VITE_BACKEND_URL.replace(/\/+$/, '')
+//   : (typeof window !== 'undefined'
+//       ? `http://${window.location.hostname}:3001`
+//       : 'http://localhost:3001');
 
 // 🔹 URL base para todos los endpoints de API
-const API_BASE_URL = `${backendHostname}/api`;
+const API_BASE_URL = ('http://localhost:3001/api'  || `import.meta.env.VITE_BACKEND_URL`).replace(/\/+$/, '')
 
 // 🔹 URL específica para chat (opcional)
 const CHAT_API_URL = `${API_BASE_URL}/chat`;
