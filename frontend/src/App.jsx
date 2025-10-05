@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home/Home";
 import Faq from "./pages/faq/faq";
-import History from "./pages/History/History"; // 1. Importar el componente History
+import History from "./pages/History/History"; // 1. Import the History component
 import Chatbox from "./components/Chatbox";
 import Histories from "./pages/History/History";
 
@@ -21,7 +21,7 @@ function App() {
     },
   ]);
   
-  // ✅ PASO 1: Creamos el estado para controlar si el chat está abierto aquí.
+  // ✅ STEP 1: We create the state to control if the chat is open here.
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
@@ -49,7 +49,7 @@ function App() {
 
     setMessages(prev => [...prev, proactiveMessage]);
     
-    // ✅ PASO 2: Al enviar el mensaje, también forzamos la apertura del chat.
+    // ✅ STEP 2: When sending the message, we also force the chat to open.
     setIsChatOpen(true);
 
   }, [results]);
@@ -80,8 +80,7 @@ function App() {
         variable={variable}
         activity={activity}
         messages={messages}
-        setMessages={setMessages}
-        // ✅ PASO 3: Le pasamos el estado y la función al Chatbox.
+        setMessages={setMessages}        // ✅ STEP 3: We pass the state and the function to the Chatbox.
         isOpen={isChatOpen}
         setIsOpen={setIsChatOpen}
       />

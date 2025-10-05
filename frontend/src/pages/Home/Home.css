@@ -3,12 +3,12 @@
 /* --- IMPROVEMENT: Import a clean, modern font for the entire application --- */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
-/* Variables de Color (de tu diseño amigable) */
+/* Color Variables (from your friendly design) */
 :root {
-    --color-background-light: #F0F4F8; /* Azul Nieve */
-    --color-card-bg: #FFFFFF; /* Blanco */
-    --color-primary-indigo: #3F51B5; /* Azul Índigo */
-    --color-primary-blue: #2196F3; /* Azul Claro Vibrante */
+    --color-background-light: #F0F4F8; /* Snow Blue */
+    --color-card-bg: #FFFFFF; /* White */
+    --color-primary-indigo: #3F51B5; /* Indigo Blue */
+    --color-primary-blue: #2196F3; /* Vibrant Light Blue */
     --color-text-dark: #333333;
     --color-text-secondary: #757575;
     --color-border-subtle: rgba(0, 0, 0, 0.1);
@@ -28,7 +28,7 @@ body {
     margin: 0 auto;
 }
 
-/* --- Encabezado --- */
+/* --- Header --- */
 .page-header {
     text-align: center;
     margin-bottom: 40px;
@@ -46,7 +46,7 @@ body {
 
 .control-panel {
     display: grid;
-    grid-template-columns: 1fr 1.2fr; /* Ligeramente más grande el mapa */
+    grid-template-columns: 1fr 1.2fr; /* Slightly larger map */
     gap: 30px;
     margin-bottom: 50px;
 }
@@ -65,45 +65,45 @@ body {
     margin-top: 0;
 }
 /* ==================================== */
-/* --- ESTILOS PARA EL BUSCADOR DE UBICACIONES (Estilo Floating Pill) --- */
+/* --- STYLES FOR LOCATION SEARCH (Floating Pill Style) --- */
 /* ==================================== */
 
-/* Contenedor principal del buscador */
+/* Main search container */
 .location-search-container {
-    /* Define el ancho máximo para que no ocupe todo el espacio de la página */
+    /* Define the maximum width so it doesn't take up the entire page space */
     max-width: 600px; 
-    margin: 20px auto 40px auto; /* Centrarlo y darle espacio arriba y abajo */
+    margin: 20px auto 40px auto; /* Center it and give it space above and below */
 }
 
-/* El formulario que envuelve el input y el botón */
+/* The form that wraps the input and button */
 .location-search-form {
     display: flex;
     align-items: center;
     width: 100%;
     
-    /* 🔥 Diseño Clave: Fondo, Bordes Redondeados y Sombra (Pill Look) */
-    background-color: var(--color-card-bg); /* Blanco */
-    border-radius: 40px; /* Bordes muy redondeados para la forma de píldora */
-    padding: 10px 20px; /* Espacio interno */
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); /* Sombra que le da el efecto flotante */
+    /* 🔥 Key Design: Background, Rounded Borders, and Shadow (Pill Look) */
+    background-color: var(--color-card-bg); /* White */
+    border-radius: 40px; /* Very rounded borders for the pill shape */
+    padding: 10px 20px; /* Internal space */
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); /* Shadow that gives it the floating effect */
     transition: box-shadow 0.2s;
 }
 
 .location-search-form:hover {
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); /* Sombra ligeramente más intensa al pasar el ratón */
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); /* Slightly more intense shadow on hover */
 }
 
-/* El campo de texto (Input) */
+/* The text field (Input) */
 .location-search-input {
-    /* Es crucial eliminar el borde y el fondo del input para que se fusione con el form */
+    /* It's crucial to remove the input's border and background to merge it with the form */
     flex-grow: 1;
     border: none !important; 
     background-color: transparent !important; 
-    padding: 10px 0; /* Espacio vertical para centrar el texto */
+    padding: 10px 0; /* Vertical space to center the text */
     font-size: 1.1rem;
     color: var(--color-text-dark); 
     
-    /* Limpiar estilos de enfoque/focus */
+    /* Clear focus styles */
     outline: none;
     box-shadow: none !important; 
 }
@@ -113,13 +113,13 @@ body {
     opacity: 0.8;
 }
 
-/* El botón de búsqueda (Lupa) */
+/* The search button (Magnifying glass) */
 .location-search-btn {
     background-color: transparent;
     border: none;
-    color: var(--color-text-secondary); /* Color gris suave */
+    color: var(--color-text-secondary); /* Soft gray color */
     font-size: 1.2rem; 
-    padding: 0 5px 0 15px; /* Padding para separar la lupa del texto */
+    padding: 0 5px 0 15px; /* Padding to separate the magnifying glass from the text */
     cursor: pointer;
     transition: color 0.2s;
 }
@@ -157,7 +157,7 @@ body {
 }
 
 
-/* --- Selector de Variables --- */
+/* --- Variable Selector --- */
 .variable-selector {
     margin-top: 15px;
     margin-bottom: 25px;
@@ -172,7 +172,7 @@ body {
     padding: 8px 15px;
     border-radius: 20px;
     border: 1px solid var(--color-border-subtle);
-    background-color: #E0E0E0; /* Gris claro */
+    background-color: #E0E0E0; /* Light Gray */
     color: var(--color-text-secondary);
     cursor: pointer;
     transition: all 0.2s ease;
@@ -188,7 +188,7 @@ body {
     box-shadow: 0 2px 8px rgba(63, 81, 181, 0.3);
 }
 
-/* --- Botón Primario --- */
+/* --- Primary Button --- */
 .btn-primary {
     width: 100%;
     padding: 12px;
@@ -202,11 +202,11 @@ body {
     transition: background-color 0.2s, transform 0.1s;
 }
 .btn-primary:hover:not(:disabled) {
-    background-color: #303F9F; /* Tono más oscuro de índigo */
+    background-color: #303F9F; /* Darker shade of indigo */
     transform: translateY(-1px);
 }
 .btn-primary:disabled {
-    background-color: #9FA8DA; /* Gris azulado para deshabilitado */
+    background-color: #9FA8DA; /* Bluish gray for disabled */
     cursor: not-allowed;
 }
 
@@ -217,11 +217,11 @@ body {
     font-weight: 600;
 }
 
-/* --- Mapa --- */
+/* --- Map --- */
 .map-card {
     display: flex;
     flex-direction: column;
-    min-height: 400px; /* <-- AÑADIDO: Altura mínima para el contenedor del mapa */
+    min-height: 400px; /* <-- ADDED: Minimum height for the map container */
 }
 .map-title {
     color: var(--color-primary-blue);
@@ -231,7 +231,7 @@ body {
 }
 .map-placeholder {
     flex-grow: 1;
-    background-color: #E3F2FD; /* Fondo azul muy claro */
+    background-color: #E3F2FD; /* Very light blue background */
     border: 2px dashed var(--color-primary-blue);
     border-radius: 8px;
     display: flex;
@@ -248,7 +248,7 @@ body {
     margin-top: 10px;
 }
 
-/* --- Resultados --- */
+/* --- Results --- */
 .results-section {
     margin-top: 40px;
 }
@@ -266,7 +266,7 @@ body {
     gap: 30px;
 }
 
-/* Placeholder de Visualización de Datos (Gráfico) */
+/* Data Visualization Placeholder (Chart) */
 .data-visualization-card {
     background-color: var(--color-card-bg);
     padding: 30px;
@@ -306,7 +306,7 @@ body {
 /* --- Responsive Design --- */
 @media (max-width: 900px) {
     .control-panel {
-        grid-template-columns: 1fr; /* Columna única en tabletas/móviles */
+        grid-template-columns: 1fr; /* Single column on tablets/mobiles */
     }
     .results-grid {
         grid-template-columns: 1fr;
@@ -322,9 +322,9 @@ body {
     }
 }
 
-/* --- MEJORA: Estilos para el selector de unidades de temperatura --- */
+/* --- IMPROVEMENT: Styles for the temperature unit selector --- */
 .data-visualization-card {
-    position: relative; /* Necesario para posicionar el selector dentro */
+    position: relative; /* Necessary to position the selector inside */
 }
 
 .unit-selector {
