@@ -32,15 +32,25 @@ const Chatbox = ({ location, date, variable, activity }) => {
   }, [messages]);
 
   useEffect(() => {
-    const handleInternalLinkClick = (e) => {
-      if (e.target.tagName === 'A' && e.target.getAttribute('href')?.startsWith('/')) {
-        e.preventDefault();
-        navigate(e.target.getAttribute('href'));
-      }
-    };
-    document.addEventListener('click', handleInternalLinkClick);
-    return () => document.removeEventListener('click', handleInternalLinkClick);
-  }, [navigate]);
+    if (chatTrigger) {
+      const { activity, condition, probability } = chatTrigger;
+      
+      // Construimos el prompt para la IA
+      const recommendationPrompt = `Based on a ${probability}% probability of a "${condition}" day, give me a brief and friendly recommendation for my activity: "${activity}".`;
+      
+      // Abrimos el chat
+      setIsOpen(true);
+      
+      // Añadimos un mensaje temporal de "pensando"
+      setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: `Give me a recommendation for my activity.` }]);
+      
+      // Enviamos el prompt al backend
+      // Usamos un pequeño timeout para que el usuario vea el mensaje "user" antes de que llegue la respuesta
+      setTimeout(() => {
+        sendMessageToServer(recommendationPrompt);
+      }, 500);
+    }
+  }, [chatTrigger]); // Este efecto se ejecuta cada vez que chatTrigger cambia
 
   const formatMessageToHTML = (text) => {
     let formattedText = text;
@@ -66,17 +76,16 @@ const Chatbox = ({ location, date, variable, activity }) => {
     setInputValue(e.target.value);
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    const userMessage = inputValue.trim();
-    if (!userMessage) return;
+  // --- NUEVO: Función refactorizada para enviar mensajes al servidor ---
+  const sendMessageToServer = async (messageText) => {
+    setIsLoading(true);
 
-    setInputValue("");
+    // Añade un ID único al mensaje del bot que vamos a ir actualizando
+    const botMessageId = Date.now() + 1;
     setMessages((prev) => [
       ...prev,
-      { id: Date.now(), sender: "user", text: userMessage },
+      { id: botMessageId, sender: "bot", text: "" }, // Mensaje vacío inicial
     ]);
-    setIsLoading(true);
 
     try {
       const response = await fetch(API_URL, {
@@ -95,31 +104,57 @@ const Chatbox = ({ location, date, variable, activity }) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || `Error del servidor: ${response.statusText}`
-        );
+        throw new Error(errorData.error || `Server Error: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      // --- LÓGICA DE STREAMING ---
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
       setMessages((prev) => [
         ...prev,
         { id: Date.now() + 1, sender: "bot", text: data.text },
       ]);
 
+        for (const line of lines) {
+          const jsonString = line.replace('data: ', '');
+          try {
+            const parsed = JSON.parse(jsonString);
+            if (parsed.text) {
+              setMessages(prev => prev.map(msg => 
+                msg.id === botMessageId ? { ...msg, text: msg.text + parsed.text } : msg
+              ));
+            }
+          } catch (e) {
+            console.error("Error parsing stream chunk:", jsonString);
+          }
+        }
+      }
     } catch (error) {
       console.error("Error en el chat:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: "bot",
-          text: `I'm sorry, an error occurred: ${error.message}`,
-        },
-      ]);
+      setMessages(prev => prev.map(msg => 
+        msg.id === botMessageId ? { ...msg, text: `I'm sorry, an error occurred: ${error.message}` } : msg
+      ));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    const userMessage = inputValue.trim();
+    if (!userMessage) return;
+
+    setInputValue("");
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), sender: "user", text: userMessage },
+    ]);
+    sendMessageToServer(userMessage);
   };
 
   const formatMessagesForWhatsapp = () => {

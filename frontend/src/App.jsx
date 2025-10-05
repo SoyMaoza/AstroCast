@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home/Home";
 import Faq from "./pages/faq/faq";
+import History from "./pages/History/History"; // 1. Importar el componente History
 import Chatbox from "./components/Chatbox";
 
 
@@ -33,7 +34,7 @@ function App() {
           }
         />
         <Route path="/faq" element={<Faq />} />
-        <Route path="/history" element={<Faq />} />
+        <Route path="/history" element={<History />} /> {/* 2. Usar el componente History */}
       </Routes>
 
       {/* 🔥 Chatbox ahora está global, fuera de Routes */}

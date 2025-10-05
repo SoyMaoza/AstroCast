@@ -1,13 +1,10 @@
 // data/ClimaService.js
 const fetch = require("node-fetch");
 const netcdfjs = require("netcdfjs");
-const dotenv = require('dotenv'); // --- MEJORA: Cargar variables de entorno ---
 const { Reader } = netcdfjs;
 const { EstadisticasClima } = require("../models/Clima.js");
-dotenv.config(); // --- MEJORA: Inicializar dotenv ---
 // --- CONFIGURACIÓN ---
-// --- MEJORA: Usar el token desde el archivo .env ---
-const TOKEN = process.env.NASA_BEARER_TOKEN;
+const TOKEN = 'eyJ0eXAiOiJKV1QiLCJvcmlnaW4iOiJFYXJ0aGRhdGEgTG9naW4iLCJzaWciOiJlZGxqd3RwdWJrZXlfb3BzIiwiYWxnIjoiUlMyNTYifQ.eyJ0eXBlIjoiVXNlciIsInVpZCI6ImFicmFoYW03NCIsImV4cCI6MTc2NDM3NDM5OSwiaWF0IjoxNzU5MTgwNzM0LCJpc3MiOiJodHRwczovL3Vycy5lYXJ0aGRhdGEubmFzYS5nb3YiLCJpZGVudGl0eV9wcm92aWRlciI6ImVkbF9vcHMiLCJhY3IiOiJlZGwiLCJhc3N1cmFuY2VfbGV2ZWwiOjN9.JtX-hH_NucBgkPjjyViTxxMLlORbVIEjGLlAeGGPGBKoNG6rqzvg4n5vH3yCDH5RzPhVmrlGRPImOPXFq5l8Gz1ITrfijple8ZA5AAasKqLBb_ekdyWSXCB9O4pIQRmetJimSi4n9rwUyNF9tOrJ8-TvcjCA23kWUNTGRnqneBmoVfbpup7rxifLoUScBb2wXLtmjJFTP8rSY0iVY64n6HLRBJUgESefj64hSvt50xODAg3ayX_g1BwioG2otGmuqcFt7qV0k5EfEJJd2bGtbQD-LocTAwUaG_Wq0XFYN2QQw1LBOMm4q94DdI2Va1XzMO6RfBBEIFZvuoclNTvjZw'; // :exclamation: IMPORTANTE: Reemplaza con tu token real
 // Colecciones seleccionadas (las mejores de tu lista)
 const COLECCIONES = {
   temperatura: 'M2SDNXSLV',      // Daily max/min/mean temperature

@@ -1,11 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Label, ReferenceArea } from 'recharts';
-
-// --- MEJORA: Funciones de conversión de temperatura ---
-const kelvinToCelsius = (k) => k - 273.15;
-const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
-
-
 
 /**
  * Calcula los puntos para una curva de distribución normal (Campana de Gauss).
@@ -25,22 +19,10 @@ const generateBellCurveData = (mean, stdDev) => {
     return data;
 };
 
-const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
+const DistributionChart = ({ mean, threshold, unit }) => {
     // Asumimos una desviación estándar para la visualización. 
     // Un valor entre 5 y 10 suele funcionar bien para temperaturas en K.
     const stdDev = 8; 
-
-    // --- NEW: State to control a simple fade-in animation for all elements ---
-    const [animatedOpacity, setAnimatedOpacity] = useState(0);
-
-    useEffect(() => {
-        // Reset and trigger the animation when the data changes.
-        setAnimatedOpacity(0);
-        const timer = setTimeout(() => {
-            setAnimatedOpacity(1); // Trigger the fade-in to full opacity
-        }, 100); // Short delay to allow the chart to render first
-        return () => clearTimeout(timer);
-    }, [mean, threshold]); // Rerun animation if data changes
 
     // --- MEJORA: Comprobación de props para evitar errores ---
     // Si los datos principales no son números válidos, no renderizar el gráfico.
@@ -51,41 +33,16 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
             </div>
         );
     }
-
-    // --- MEJORA: Conversión de unidades para visualización ---
-    let displayMean = mean;
-    let displayThreshold = threshold;
-    let displayUnitSymbol = unit;
-    let chartData = generateBellCurveData(mean, stdDev);
-
-    if (unit === 'K') {
-        if (displayUnit === 'C') {
-            displayMean = kelvinToCelsius(mean);
-            displayThreshold = kelvinToCelsius(threshold);
-            chartData = chartData.map(d => ({ ...d, x: kelvinToCelsius(d.x) }));
-            displayUnitSymbol = '°C';
-        } else if (displayUnit === 'F') {
-            displayMean = kelvinToFahrenheit(mean);
-            displayThreshold = kelvinToFahrenheit(threshold);
-            chartData = chartData.map(d => ({ ...d, x: kelvinToFahrenheit(d.x) }));
-            displayUnitSymbol = '°F';
-        }
-    }
+    const chartData = generateBellCurveData(mean, stdDev);
 
     // Determina si el umbral representa un riesgo por ser alto o bajo
     const isRiskHigh = threshold > mean;
 
     // Encuentra el valor máximo y mínimo en el eje X para delimitar el área de riesgo
-    // Usamos los valores originales en Kelvin para la lógica del área de riesgo
-    const originalChartData = generateBellCurveData(mean, stdDev);
-    const xDomain = [originalChartData[0].x, originalChartData[originalChartData.length - 1].x];
+    const xDomain = [chartData[0].x, chartData[chartData.length - 1].x];
 
     // --- MEJORA: Evitar solapamiento de etiquetas ---
-    // La cercanía se calcula sobre los valores mostrados
-    const areLabelsClose = Math.abs(displayMean - displayThreshold) < (displayMean / 4);
-
-    // Formateador para el tooltip
-    const tooltipFormatter = (value, name, props) => [`${props.payload.x.toFixed(1)} ${displayUnitSymbol}`, 'Value'];
+    const areLabelsClose = Math.abs(mean - threshold) < 12;
 
     return (
         <div style={{ width: '100%', height: 250 }}>
@@ -104,13 +61,12 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
                         dataKey="x" 
                         type="number"
                         domain={['dataMin', 'dataMax']}
-                        tickFormatter={(tick) => tick.toFixed(0)}
                         tick={{ fontSize: 12, fill: '#757575' }}
-                        label={{ value: `Value (${displayUnitSymbol})`, position: 'insideBottom', offset: -10, fill: '#757575' }}
+                        label={{ value: `Valor (${unit})`, position: 'insideBottom', offset: -10, fill: '#757575' }}
                     />
                     <YAxis hide={true} domain={[0, 'dataMax']} />
                     <Tooltip
-                        formatter={tooltipFormatter}
+                        formatter={(value, name, props) => [`${props.payload.x} ${unit}`, 'Valor']}
                         labelFormatter={() => ''}
                         cursor={{ stroke: '#3F51B5', strokeWidth: 1, strokeDasharray: '3 3' }}
                         contentStyle={{
@@ -125,27 +81,19 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
 
                     {/* --- MEJORA: Área de Riesgo Sombreada --- */}
                     <ReferenceArea
-                        x1={isRiskHigh ? displayThreshold : chartData[0].x}
-                        x2={isRiskHigh ? chartData[chartData.length - 1].x : displayThreshold}
+                        x1={isRiskHigh ? threshold : xDomain[0]}
+                        x2={isRiskHigh ? xDomain[1] : threshold}
                         stroke="none"
-                        fill="#F44336"
-                        fillOpacity={animatedOpacity * 0.2} // Final opacity is 0.2
-                        style={{ transition: 'fill-opacity 1.2s ease-out' }} // CSS transition for smooth effect
+                        fill="#F44336" // Rojo de riesgo
+                        fillOpacity={0.2} // Hacemos el color semitransparente
                     >
-                        <Label value="Risk Zone" position="insideTop" fill="#B71C1C" fontSize={12} />
+                        <Label value="Zona de Riesgo" position="insideTop" fill="#B71C1C" fontSize={12} />
                     </ReferenceArea>
 
                     {/* Línea de la Media Histórica */}
-                    <ReferenceLine 
-                        x={displayMean} 
-                        stroke="#2196F3" 
-                        strokeWidth={2} 
-                        strokeDasharray="4 4"
-                        strokeOpacity={animatedOpacity} // Use animated state for fade-in
-                        style={{ transition: 'stroke-opacity 0.8s ease-out 0.2s' }} // Staggered animation
-                    >
+                    <ReferenceLine x={mean} stroke="#2196F3" strokeWidth={2} strokeDasharray="4 4">
                         <Label 
-                            value={`Average: ${displayMean.toFixed(1)}`} 
+                            value={`Media: ${mean.toFixed(1)}`} 
                             position="top" 
                             fill="#1E88E5"
                             fontSize={12} 
@@ -153,16 +101,10 @@ const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
                     </ReferenceLine>
 
                     {/* Línea del Umbral de Riesgo */}
-                    <ReferenceLine 
-                        x={displayThreshold} 
-                        stroke="#F44336" 
-                        strokeWidth={2}
-                        strokeOpacity={animatedOpacity} // Use animated state for fade-in
-                        style={{ transition: 'stroke-opacity 0.8s ease-out 0.3s' }} // Staggered animation
-                    >
+                    <ReferenceLine x={threshold} stroke="#F44336" strokeWidth={2}>
                         {/* --- MEJORA: Posiciona la etiqueta dentro del área de riesgo si está muy cerca de la media --- */}
                         <Label 
-                            value={`Limit: ${displayThreshold.toFixed(1)}`} 
+                            value={`Límite: ${threshold.toFixed(1)}`} 
                             position={areLabelsClose ? "insideTopRight" : "top"}
                             fill="#F44336" 
                             fontSize={12} 
