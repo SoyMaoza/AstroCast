@@ -201,8 +201,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
             <div className="control-panel">
                 {/* Inputs de consulta */}
                 <div className="query-card">
-                    <h2>Define Your Query</h2>
-                    
+                    <h2>Define Your Query</h2>    
                     <div className="input-group">
                         <label>📍 Latitude:</label>
                         <input 
