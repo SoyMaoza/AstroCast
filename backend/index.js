@@ -1,101 +1,84 @@
-// Usando CommonJS:
+// Using CommonJS:
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
 const dotenv = require('dotenv');
-// NOTE: Se requiere que este archivo exista en tu estructura:
+// NOTE: This file is required to exist in your structure:
 const { obtenerEstadisticasHistoricas } = require('./data/Clima.js');
 const { execFile } = require('child_process');
 dotenv.config();
 const mongoose = require("mongoose");
 const app = express();
 const port = 3001;
-
-// Configurar middlewares
+// Configure middlewares
 app.use(cors());
 app.use(express.json());
-
-// --- Configuración de Gemini ---
+// --- Gemini Configuration ---
 const API_KEY = process.env.API_KEY;
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 const modelName = "gemini-2.5-flash";
 let chat = null;
-
 function initializeChat() {
-    console.log(`Inicializando sesión de chat con el modelo ${modelName}...`);
+    console.log(`Initializing chat session with model ${modelName}...`);
     chat = ai.chats.create({
         model: modelName,
         config: {
-            systemInstruction: "You are a friendly and helpful chatbot assistant, designed to answer questions concisely. If asked for user information or help-related topics, you must respond with a message that includes a Markdown hyperlink: [Help Page](http://localhost:5173/faq). Preferably, your answers should not be too long. You are allowed to provide information about the user's location if requested, using only the data you have access to. If asked for the location, also provide the place corresponding to the coordinates. For example, if given a latitude and longitude, convert it to the corresponding location.",
+            systemInstruction: "You are a friendly and helpful chatbot assistant, designed to answer questions concisely. If asked for user information or anything related to help, you should respond with a message that includes the hyperlink in **Markdown** format: Help Page. Preferably, your answers should not be too long. You are allowed to give information about their location if they ask for it, but only the data you have access to.",
         },
     });
 }
 initializeChat();
-
-// --- Ruta API de Chat ---
+// --- Chat API Route ---
 app.post('/api/chat', async (req, res) => {
-    // --- INICIO DE NUEVOS LOGS DE DIAGNÓSTICO ---
+    // --- START OF NEW DIAGNOSTIC LOGS ---
     console.log("\n\n--- New Request to /api/chat ---");
     console.log("Request body received:", req.body);
-    // --- FIN DE NUEVOS LOGS DE DIAGNÓSTICO ---
-
-    const { message, lat, lon, day, month, variable } = req.body;
-
+    // --- END OF NEW DIAGNOSTIC LOGS ---
+    const { message, lat, lon, date, variable } = req.body;
     if (!message) {
         console.log("❌ Error: Message is empty or does not exist.");
         return res.status(400).json({ error: 'Message is required.' });
     }
-
     try {
-        const lowerCaseMessage = message.toLowerCase(); // Keep this in lowercase for matching
+        const lowerCaseMessage = message.toLowerCase();
         console.log("Lowercase message for analysis:", `"${lowerCaseMessage}"`); // Log to see the message
-
         const esConsultaAyuda = (
-            lowerCaseMessage.includes('ayuda') ||
-            lowerCaseMessage.includes('info') ||
-            lowerCaseMessage.includes('soporte') ||
-            lowerCaseMessage.includes('usuario') ||
-            lowerCaseMessage.includes('compartir') ||
-            lowerCaseMessage.includes('historial')
+            lowerCaseMessage.includes('help') ||
+            lowerCaseMessage.includes('support') ||
+            lowerCaseMessage.includes('user') ||
+            lowerCaseMessage.includes('share') ||
+            lowerCaseMessage.includes('record')
         );
-
         if (esConsultaAyuda) {
             console.log("✅ HELP RULE ACTIVATED! Sending response with hyperlink.");
             const markdownResponse = "For more information about the application or to share your chat history, please visit our **Help Page**.";
             return res.json({ text: markdownResponse });
         }
-
-        console.log("ℹ️ Help rule not activated. Processing with other logic or AI...");
-
-        // --- Lógica de Resumen de Consulta ---
-        const pideResumenConsulta = (lat && lon && day && month) &&
-        (lowerCaseMessage.includes('mi información') ||
-        lowerCaseMessage.includes('mis datos') ||
-        lowerCaseMessage.includes('mi latitud') ||
-        lowerCaseMessage.includes('dame la informacion') ||
-        lowerCaseMessage.includes('mi ubicación') || // <-- NUEVA CONDICIÓN
-        lowerCaseMessage.includes('cual es mi ubicacion')); // <-- NUEVA CONDICIÓN
-
-        if (pideResumenConsulta) {
-            console.log("✅ Summary Logic activated.");
-            const textoRespuesta = `Of course! Here is the data for your selected query:\n\n- **Location:**\n  - Latitude: ${lat}\n  - Longitude: ${lon}\n- **Selected Date:**\n  - Month: ${month}\n  - Day: ${day}\n- **Condition to Analyze:** ${variable || 'Not selected'}\n\nIf you want me to analyze the weather for this data, just ask something like: "tell me the weather forecast".`;
-            return res.json({ text: textoRespuesta });
+        console.log("ℹ️ Help rule was not triggered. Processing with other logic or with AI...");
+        // --- Query Summary Logic ---
+        const requestSummaryConsultation = (lat && lon && date) &&
+        (lowerCaseMessage.includes('information') ||
+        lowerCaseMessage.includes('data') ||
+        lowerCaseMessage.includes('latitude') ||
+        lowerCaseMessage.includes('longitude'));
+        if (requestSummaryConsultation) {
+            console.log("✅ Summary logic activated.");
+            const answerTest = `Of course! Here is the data for the query you have selected:\n\n- **Location:**\n  - Latitude: ${lat}\n  - Longitude: ${lon}\n- **Selected Date:**\n  - Month: ${date.split('-')[0]}\n  - Day: ${date.split('-')[1]}\n- **Condition to Analyze:** ${variable || 'Not selected'}\n\nIf you want me to analyze the weather for this data, just ask something like: "tell me the weather forecast".`;
+            return res.json({ text: answerTest });
         }
-
-        // --- Lógica de Clima ---
-        const esConsultaClima = (lat && lon && day && month) &&
-        (lowerCaseMessage.includes('clima') ||
+        // --- Climate Logic ---
+        const esConsultaClima = (lat && lon && date) &&
+        (lowerCaseMessage.includes('weather') ||
         lowerCaseMessage.includes('pronóstico') ||
-        lowerCaseMessage.includes('analiza') ||
+        lowerCaseMessage.includes('weather') ||
+        lowerCaseMessage.includes('forecast') ||
         lowerCaseMessage.includes('dime'));
-
         let responseText;
-
         if (esConsultaClima) {
-            console.log("✅ Climate Logic activated.");
-            const estadisticas = await obtenerEstadisticasHistoricas({ lat: parseFloat(lat), lon: parseFloat(lon) }, `${month}-${day}`, new Date().getFullYear() - 5, new Date().getFullYear() - 1);
+            console.log("✅ Climate logic activated.");
+            const estadisticas = await obtenerEstadisticasHistoricas({ lat: parseFloat(lat), lon: parseFloat(lon) }, date, new Date().getFullYear() - 5, new Date().getFullYear() - 1);
             const resumenDatos = estadisticas.generarTextoResumen();
-            const promptMejorado = `Based on the following historical data for the location with latitude ${lat} and longitude ${lon} on the date ${month}-${day}, answer the user's question in a friendly and conversational manner. Explain what these probabilities mean. Do not mention the analyzed years unless asked.\n\nHistorical Analysis Data:\n${resumenDatos}\n\nUser's question: "${message}"`;
+            const promptMejorado = `Based on the following historical data for the location with latitude ${lat} and longitude ${lon} on the date ${date}, answer the user's question in a friendly and conversational way. Explain what these probabilities mean. Do not mention the years analyzed unless asked.\n\nHistorical Analysis Data:\n${resumenDatos}\n\nUser's question: "${message}"`;
             const response = await chat.sendMessage({ message: promptMejorado });
             responseText = response.text;
         } else {
@@ -103,33 +86,27 @@ app.post('/api/chat', async (req, res) => {
             const response = await chat.sendMessage({ message: message });
             responseText = response.text;
         }
-
         return res.json({ text: responseText });
-
     } catch (error) {
-        console.error('❌ Error communicating with Gemini API:', error);
+        console.error('❌ Error communicating with the Gemini API:', error);
         res.status(500).json({ error: 'Internal server error while processing chat.' });
     }
 });
-
-
 // =================================================================
-// EL RESTO DEL CÓDIGO PERMANECE IGUAL
+// THE REST OF THE CODE REMAINS THE SAME
 // =================================================================
-
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("✅ Connected to MongoDB Atlas"))
 .catch((err) => console.error("❌ Error connecting to MongoDB:", err));
-
 // =================================================================
-//                   ESQUEMA Y MODELO DE MONGODB
+//                   MONGODB SCHEMA AND MODEL
 // =================================================================
 const ClimateDaySchema = new mongoose.Schema({
     day: { type: Number, required: true },
     month: { type: Number, required: true },
     lat: { type: Number, required: true },
-    lon: { type: Number, required: true },
-    variable: { type: String, required: true, enum: ["warm", "cold", "windy", "dusty", "humid", "uncomfortable", "rainy", "snowy", "cloudy"] },
+    lon: { type: Number, required: true }, // 'lluvioso' is not a valid enum value for path `variable`.
+    variable: { type: String, required: true, enum: ["warm", "cold", "windy", "dusty", "humid", "incomodo", "lluvioso", "snowy", "cloudy"] },
     probability: { type: Number, required: true },
     historicalMean: { type: Number, required: true },
     threshold: { type: Number, required: true },
@@ -137,11 +114,9 @@ const ClimateDaySchema = new mongoose.Schema({
     detailDescription: { type: String },
     downloadLink: { type: String },
 }, { timestamps: true });
-
 ClimateDaySchema.index({ day: 1, month: 1, lat: 1, lon: 1, variable: 1 });
 const ClimateDay = mongoose.model("ClimateDay", ClimateDaySchema);
-
-// --- MEJORA: Nuevo esquema para cachear las estadísticas históricas calculadas ---
+// --- IMPROVEMENT: New schema to cache calculated historical statistics ---
 const HistoricalStatSchema = new mongoose.Schema({
     day: { type: Number, required: true },
     month: { type: Number, required: true },
@@ -151,19 +126,20 @@ const HistoricalStatSchema = new mongoose.Schema({
     mean: { type: Number, required: true },
     p10: { type: Number, required: true },
     p90: { type: Number, required: true },
-    stdDev: { type: Number, required: true }, // <-- AÑADIDO: Guardaremos la desviación estándar
+    stdDev: { type: Number, required: true }, // <-- ADDED: We will save the standard deviation
 }, { timestamps: true });
 HistoricalStatSchema.index({ day: 1, month: 1, latIndex: 1, lonIndex: 1, variable: 1 });
 const HistoricalStat = mongoose.model("HistoricalStat", HistoricalStatSchema);
-
 // =================================================================
-//           CONFIGURACIÓN DE LA API Y VARIABLES DE NASA
+//           NASA API CONFIGURATION AND VARIABLES
 // =================================================================
-// --- CORRECCIÓN: URLs base actualizadas para usar la estructura /hyrax/ y ser dinámicas ---
-// Se usarán como plantillas para construir la URL final.
+// --- FIX: Base URLs updated to use the /hyrax/ structure and be dynamic ---
+// They will be used as templates to build the final URL.
 const MERRA2_SLV_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXSLV.5.12.4";
 const MERRA2_AER_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXAER.5.12.4";
-const GPM_IMERG_URL_TEMPLATE = "https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDF.07"; // CORRECCIÓN: GPM no usa el endpoint /hyrax/
+const MERRA2_INT_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXINT.5.12.4"; // <-- ADDED: Dataset for snow
+const MERRA2_RAD_URL_TEMPLATE = "https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2T1NXRAD.5.12.4"; // <-- ADDED: Dataset for clouds/radiation
+const GPM_IMERG_URL_TEMPLATE = "https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDF.07"; // FIX: GPM does not use the /hyrax/ endpoint
 
 
 const CONFIG_VARIABLES_NASA = {
@@ -171,104 +147,98 @@ const CONFIG_VARIABLES_NASA = {
         apiVariable: "T2M",
         datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
         unit: "K",
-        // NUEVO UMBRAL: La media más 1.5 desviaciones estándar.
+        // NEW THRESHOLD: The mean plus 1.5 standard deviations.
         threshold: (stats) => stats.mean + 1.5 * stats.stdDev,
-        isBelowThresholdWorse: false, // Es peor si está POR ENCIMA del umbral.
+        isBelowThresholdWorse: false, // It's worse if it's ABOVE the threshold.
     },
     cold: {
         apiVariable: "T2M",
         datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
         unit: "K",
-        // NUEVO UMBRAL: La media menos 1.5 desviaciones estándar.
+        // NEW THRESHOLD: The mean minus 1.5 standard deviations.
         threshold: (stats) => stats.mean - 1.5 * stats.stdDev,
-        isBelowThresholdWorse: true, // Es peor si está POR DEBAJO del umbral.
+        isBelowThresholdWorse: true, // It's worse if it's BELOW the threshold.
     },
     windy: {
         apiVariable: ["U10M", "V10M"],
-        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE, // CORRECCIÓN: Usar la plantilla correcta para variables de superficie.
+        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE, // FIX: Use the correct template for surface variables.
         unit: "m/s",
-        threshold: (stats) => stats.mean + 1.5 * stats.stdDev, // Umbral basado en la media
+        threshold: (stats) => stats.mean + 1.5 * stats.stdDev, // Threshold based on the mean
         isBelowThresholdWorse: false,
     },
     dusty: {
         apiVariable: "DUEXTTAU",
         datasetUrlTemplate: MERRA2_AER_URL_TEMPLATE,
         unit: "1 (dimensionless)",
-        threshold: (stats) => stats.mean + 2.0 * stats.stdDev, // Para polvo, un umbral más extremo
+        threshold: (stats) => stats.mean + 2.0 * stats.stdDev, // For dusty, a more extreme threshold
         isBelowThresholdWorse: false,
     },
     humid: {
         apiVariable: "QV2M",
         datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
         unit: "kg/kg",
-        threshold: (stats) => stats.p90, // Usamos el percentil 90 como umbral de referencia
+        threshold: (stats) => stats.p90, // We use the 90th percentile as a reference threshold
         isBelowThresholdWorse: false,
     },
-    uncomfortable: {
-        apiVariable: ["T2M", "QV2M", "PS"], // Necesita Temperatura, Humedad Específica y Presión
+    incomodo: {
+        apiVariable: ["T2M", "QV2M", "PS"], // Needs Temperature, Specific Humidity, and Pressure
         datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
         unit: "°C (Heat Index)",
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
     },
     rainy: {
-        apiVariable: "precipitation", // CORRECCIÓN FINAL: La variable en GPM IMERG V7 es 'precipitation'.
+        apiVariable: "precipitation", // FINAL FIX: The variable in GPM IMERG V7 is 'precipitation'.
         datasetUrlTemplate: GPM_IMERG_URL_TEMPLATE,
-        startYear: 2000, // Los datos de GPM IMERG comienzan en junio de 2000
+        startYear: 2000, // GPM IMERG data starts in June 2000
         unit: "mm/day",
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
     },
     snowy: {
-        apiVariable: "PRECSN", // Precipitación de Nieve
-        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
+        apiVariable: "PRECSN", // Snowfall
+        datasetUrlTemplate: MERRA2_INT_URL_TEMPLATE,
         unit: "mm/day",
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
     },
     cloudy: {
-        apiVariable: "CLDTOT", // Fracción Total de Nubes
-        datasetUrlTemplate: MERRA2_SLV_URL_TEMPLATE,
-        unit: "%", // La API lo da como fracción (0-1), lo convertiremos
+        apiVariable: "CLDTOT", // Total Cloud Fraction
+        datasetUrlTemplate: MERRA2_RAD_URL_TEMPLATE,
+        unit: "%", // The API gives it as a fraction (0-1), we will convert it
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
     },
 };
-
 // =================================================================
-//        MANEJO DE AUTENTICACIÓN Y CACHÉ DE COORDENADAS
+//        AUTHENTICATION AND COORDINATE CACHE HANDLING
 // =================================================================
 const coordinateCache = new Map();
-
 // =================================================================
-//                      FUNCIONES HELPERS
+//                      HELPER FUNCTIONS
 // =================================================================
-
 function fetchWithCurl(url, isJson = false) {
     return new Promise((resolve, reject) => {
         const path = require('path');
         const cookieFile = path.join(__dirname, 'nasa-cookies.txt');
         
         // ======================================================= //
-        // AQUÍ ESTÁ EL CAMBIO MÁS IMPORTANTE
-        // Ahora busca .netrc en la carpeta del proyecto (backend/)
+        // HERE IS THE MOST IMPORTANT CHANGE
+        // Now it looks for .netrc in the project folder (backend/)
         // ======================================================= //
         const netrcFile = path.join(__dirname, '.netrc');
-
         const args = ['-L', '-k', '--netrc-file', netrcFile, '-c', cookieFile, '-b', cookieFile, url];
         const options = { encoding: isJson ? 'utf8' : 'buffer', maxBuffer: 1024 * 1024 * 50 };
-
         // ======================================================= //
-        //              AQUÍ ESTÁ LA CORRECCIÓN
-        // Se cambió 'curl.exe' por 'curl' para que funcione en
-        // macOS, Linux y Windows.
+        //              HERE IS THE FIX
+        // 'curl.exe' was changed to 'curl' to work on
+        // macOS, Linux, and Windows.
         // ======================================================= //
         execFile('curl', args, options, (error, stdout, stderr) => {
             if (error) {
                 const cleanStderr = stderr.toString().split('\n').filter(line => !line.startsWith('  % Total')).join('\n');
-                return reject(new Error(`Fallo en curl: ${cleanStderr || error.message}`));
+                return reject(new Error(`Curl failed: ${cleanStderr || error.message}`));
             }
-
             if (isJson) {
                 try {
                     resolve(JSON.parse(stdout));
@@ -285,10 +255,6 @@ function fetchWithCurl(url, isJson = false) {
         });
     });
 }
-
-
-
-
 function findClosestIndex(target, arr) {
     let closestIndex = 0;
     let minDiff = Math.abs(target - arr[0]);
@@ -301,28 +267,23 @@ function findClosestIndex(target, arr) {
     }
     return closestIndex;
 }
-
 async function getCoordinates(datasetUrl) {
     if (coordinateCache.has(datasetUrl)) {
-        console.log(`[Cache] Coordinates retrieved from cache for ${datasetUrl.slice(-20)}`);
+        console.log(`[Cache] Coordinates obtained from cache for ${datasetUrl.slice(-20)}`);
         return coordinateCache.get(datasetUrl);
     }
-
-    console.log(`[NASA API] Fetching coordinates for ${datasetUrl.slice(-20)}`);
-    // --- MEJORA: Usar la respuesta .json en lugar de .dods para evitar parseo manual ---
+    console.log(`[NASA API] Getting coordinates for ${datasetUrl.slice(-20)}`);
+    // --- IMPROVEMENT: Use the .json response instead of .dods to avoid manual parsing ---
     const coordUrl = `${datasetUrl}.json?lat,lon`;
     try {
-        const coordResponse = await fetchWithCurl(coordUrl, true); // true para que parsee como JSON
-
-        // --- MEJORA: La estructura de GPM y MERRA-2 es diferente ---
+        const coordResponse = await fetchWithCurl(coordUrl, true); // true to parse as JSON
+        // --- IMPROVEMENT: The structure of GPM and MERRA-2 is different ---
         const latLeaf = coordResponse.leaves?.find(leaf => leaf.name === 'lat') || coordResponse.nodes?.find(n => n.name === 'Grid')?.leaves?.find(l => l.name === 'lat');
         const lonLeaf = coordResponse.leaves?.find(leaf => leaf.name === 'lon') || coordResponse.nodes?.find(n => n.name === 'Grid')?.leaves?.find(l => l.name === 'lon');
-
         if (!latLeaf || !lonLeaf || !latLeaf.data || !lonLeaf.data) {
-            console.error("[DEBUG] Estructura de respuesta de coordenadas inesperada:", JSON.stringify(coordResponse, null, 2));
-            throw new Error("Could not get coordinates from the dataset in JSON format. Check the URL in the console.");
+            console.error("[DEBUG] Unexpected coordinate response structure:", JSON.stringify(coordResponse, null, 2));
+            throw new Error("Could not get dataset coordinates in JSON format. Check the URL in the console.");
         }
-
         const lats = latLeaf.data;
         const lons = lonLeaf.data;
         
@@ -330,15 +291,14 @@ async function getCoordinates(datasetUrl) {
         coordinateCache.set(datasetUrl, coords);
         return coords;
     } catch (error) {
+        // --- IMPROVEMENT: Show the failed URL in the error ---
         console.error(`[ERROR] Coordinate URL that failed: ${coordUrl}`);
-        throw error; // Re-lanzar el error original para que sea capturado por la ruta principal
+        throw error; // Re-throw the original error to be caught by the main route
     }
 }
-
 function calculateStatistics(timeSeries, timeValues, day, month) {
     const baseDate = new Date('1980-01-01T00:30:00Z');
     const dailyValues = [];
-
     for (let i = 0; i < timeValues.length; i++) {
         const currentDate = new Date(baseDate.getTime() + timeValues[i] * 60000);
         if (currentDate.getUTCMonth() + 1 === month && currentDate.getUTCDate() === day) {
@@ -347,219 +307,226 @@ function calculateStatistics(timeSeries, timeValues, day, month) {
             }
         }
     }
-
     if (dailyValues.length === 0) {
         throw new Error(`No historical data found for the date ${day}/${month}.`);
     }
-
     dailyValues.sort((a, b) => a - b);
     const mean = dailyValues.reduce((a, b) => a + b, 0) / dailyValues.length;
     const p10 = dailyValues[Math.floor(dailyValues.length * 0.10)];
     const p90 = dailyValues[Math.floor(dailyValues.length * 0.90)];
-
     return { mean, p10, p90, values: dailyValues };
 }
-
 /**
- * --- NUEVA FUNCIÓN AUXILIAR ---
- * Determina el prefijo correcto del archivo MERRA-2 (`100`, `200`, `300`, `400`) basado en el año.
- * @param {number} year - El año a consultar.
- * @returns {string} - El prefijo del dataset (ej. "100", "200").
+ * --- NEW HELPER FUNCTION ---
+ * Determines the correct MERRA-2 file prefix (`100`, `200`, `300`, `400`) based on the year.
+ * @param {number} year - The year to query.
+ * @returns {string} - The dataset prefix (e.g., "100", "200").
  */
 function getMerra2FilePrefix(year) {
     if (year >= 2011) return "400";
-    if (year >= 2001) return "300"; // El cambio a 300 ocurre en 2001
+    if (year >= 2001) return "300"; // The change to 300 occurs in 2001
     if (year >= 1992) return "200";
     if (year >= 1980) return "100";
-    // Por si acaso se usa un año fuera de rango
+    // In case an out-of-range year is used
     return "400";
 }
-
 /**
- * --- NUEVA FUNCIÓN PRINCIPAL ---
- * Obtiene y calcula las estadísticas históricas para un punto y fecha específicos,
- * iterando a través de todos los años disponibles. Usa una caché en la BD para evitar
- * recalcular.
+ * --- NEW MAIN FUNCTION ---
+ * Gets and calculates historical statistics for a specific point and date,
+ * iterating through all available years. It uses a DB cache to avoid
+ * recalculation.
  * @param {object} config - La configuración de la variable.
- * @param {number} day - Día del mes.
- * @param {number} month - Mes del año.
- * @param {number} latIndex - Índice de la latitud.
- * @param {number} lonIndex - Índice de la longitud.
- * @returns {Promise<object>} - Objeto con { mean, p10, p90, values }.
+ * @param {number} day - Day of the month.
+ * @param {number} month - Month of the year.
+ * @param {number} latIndex - Latitude index.
+ * @param {number} lonIndex - Longitude index.
+ * @returns {Promise<object>} - Object with { mean, p10, p90, values }.
  */
 async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
     const variableName = Array.isArray(config.apiVariable) ? 'windy' : config.apiVariable;
-
-    // 1. Revisar la caché de estadísticas en la BD
+    // 1. Check the statistics cache in the DB
     const cachedStat = await HistoricalStat.findOne({ day, month, latIndex, lonIndex, variable: variableName });
     if (cachedStat) {
         console.log(`[Cache-Stats] Statistics found in DB for ${day}/${month}. They will be used for the threshold, but the probability will be recalculated.`);
-        // Aunque tengamos la estadística, necesitamos los valores para la probabilidad.
-        // Procedemos a calcularlos de nuevo. El umbral usará el valor cacheado si es posible.
+        // Even if we have the statistic, we need the values for the probability.
+        // We proceed to calculate them again. The threshold will use the cached value if possible.
     }
     console.log(`[NASA API] Calculating historical statistics for ${day}/${month}. This may take a while...`);
-
     const monthStr = String(month).padStart(2, '0');
     const dayStr = String(day).padStart(2, '0');
     const allHistoricalValues = [];
-
-    // 2. Iterar por todos los años disponibles (1980-2016 para esta colección)
-    const startYear = config.startYear || 1980; // Usar el año de inicio de la config, o 1980 por defecto
-    const endYear = new Date().getFullYear(); // Analizar hasta el año actual
+    // 2. Iterate through all available years (1980-2016 for this collection)
+    const startYear = config.startYear || 1980; // Use the start year from the config, or 1980 by default
+    const endYear = new Date().getFullYear(); // Analyze up to the current year
     const yearPromises = [];
-    const now = new Date(); // Obtenemos la fecha actual una vez
-
+    const now = new Date(); // Get the current date once
     for (let year = startYear; year <= endYear; year++) {
         const urlTemplate = config.datasetUrlTemplate;
         const queryDate = new Date(year, month - 1, day);
-
-        // --- MEJORA: No intentar descargar datos de fechas futuras o no disponibles ---
+        // --- IMPROVEMENT: Do not attempt to download data for future or unavailable dates ---
         if (urlTemplate.includes('GPM_3IMERGDF')) {
-            // El dataset GPM IMERG "Final" tiene un retraso de ~3.5 meses. Usamos 4 por seguridad.
+            // The GPM IMERG "Final" dataset has a delay of ~3.5 months. We use 4 for safety.
             const availabilityDate = new Date(queryDate);
             availabilityDate.setMonth(availabilityDate.getMonth() + 4);
             if (availabilityDate > now) {
-                console.log(`[INFO] Search stopped in year ${year} for GPM because data is not yet available (approx. 3.5-month delay).`);
+                console.log(`[INFO] Search stopped in year ${year} for GPM because data is not yet available (delay of ~3.5 months).`);
                 break;
             }
         } else {
-            // Para otros datasets (MERRA-2), solo verificamos que la fecha no sea futura.
+            // For other datasets (MERRA-2), we just check that the date is not in the future.
             if (queryDate > now) {
                 console.log(`[INFO] Search stopped in year ${year} because the date is in the future.`);
                 break;
             }
         }
         let datasetFileName;
-
-        // --- LÓGICA PARA CONSTRUIR URLS DE MÚLTIPLES DATASETS ---
+        // --- LOGIC TO BUILD URLS FOR MULTIPLE DATASETS ---
         if (urlTemplate.includes('GPM_3IMERGDF')) {
-            // Formato de archivo para GPM IMERG Daily
-            // CORRECCIÓN FINAL: Usar el formato de nombre de archivo V07B validado.
-            datasetFileName = `3B-DAY.MS.MRG.3IMERG.${year}${monthStr}${dayStr}-S000000-E235959.V07B.nc4`; // Nombre de archivo original y correcto
+            // File format for GPM IMERG Daily
+            // FINAL FIX: Use the validated V07B filename format.
+            datasetFileName = `3B-DAY.MS.MRG.3IMERG.${year}${monthStr}${dayStr}-S000000-E235959.V07B.nc4`; // Original and correct filename
         } else {
-            // Formato de archivo para MERRA-2
+            // File format for MERRA-2
             const filePrefix = getMerra2FilePrefix(year);
-            const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
+            let datasetType;
+            if (config.datasetUrlTemplate.includes('AER')) datasetType = 'aer';
+            else if (config.datasetUrlTemplate.includes('INT')) datasetType = 'int';
+            else if (config.datasetUrlTemplate.includes('RAD')) datasetType = 'rad';
+            else datasetType = 'slv';
+
             datasetFileName = `MERRA2_${filePrefix}.tavg1_2d_${datasetType}_Nx.${year}${monthStr}${dayStr}.nc4`;
         }
 
         const baseDatasetUrl = `${urlTemplate}/${year}/${monthStr}/${datasetFileName}`;
         
-        // Función para obtener los datos de un año
+        // Function to get data for one year.
         const fetchYearData = async (currentUrl) => {
             const fetchData = async (url) => {
-                // --- LÓGICA EXISTENTE PARA MERRA-2 ---
+                // --- EXISTING LOGIC FOR MERRA-2 ---
                 if (Array.isArray(config.apiVariable)) {
-                    // --- LÓGICA PARA MÚLTIPLES VARIABLES (ventoso, incomodo) ---
+                    // --- LOGIC FOR MULTIPLE VARIABLES (windy, incomodo) ---
                     const variableUrls = config.apiVariable.map(v => encodeURI(`${url}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
                     const responses = await Promise.all(variableUrls.map(vUrl => fetchWithCurl(vUrl, true)));
-
                     const dataArrays = responses.map((response, i) => {
                         const leaf = response.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable[i]);
                         if (!leaf?.data) throw new Error(`Datos para la variable ${config.apiVariable[i]} incompletos.`);
                         return leaf.data.flat(Infinity);
                     });
-
                     console.log(`[NASA API] Download for year ${year} completed. URLs: ${variableUrls.join(', ')}`);
-
                     if (variableName === 'windy') {
                         const [u10mValues, v10mValues] = dataArrays;
                         const windData = u10mValues.map((u, i) => Math.sqrt(u * u + v10mValues[i] * v10mValues[i]));
                         console.log(`       Values (wind): [${windData.map(v => v.toFixed(2)).join(', ')}]`);
                         return windData;
                     }
-
-                    if (variableName === 'uncomfortable') {
+                    if (variableName === 'incomodo') {
                         const [t2mValues, qv2mValues, psValues] = dataArrays;
                         const heatIndexData = t2mValues.map((t_k, i) => {
-                            const t_c = t_k - 273.15; // Temperatura en Celsius
-                            const qv = qv2mValues[i]; // Humedad específica (kg/kg)
-                            const p = psValues[i];   // Presión (Pa)
-
-                            // 1. Calcular presión de vapor de saturación (e_s) en hPa
+                            const t_c = t_k - 273.15; // Temperature in Celsius
+                            const qv = qv2mValues[i]; // Specific humidity (kg/kg)
+                            const p = psValues[i];   // Pressure (Pa)
+                            // 1. Calculate saturation vapor pressure (e_s) in hPa
                             const e_s = 6.1094 * Math.exp((17.625 * t_c) / (t_c + 243.04));
-                            // 2. Calcular presión de vapor (e) en hPa
+                            // 2. Calculate vapor pressure (e) in hPa
                             const e = (qv * (p / 100)) / (0.622 + 0.378 * qv);
-                            // 3. Calcular Humedad Relativa (RH)
+                            // 3. Calculate Relative Humidity (RH)
                             const rh = Math.min(100, (e / e_s) * 100);
-
-                            // 4. Calcular Índice de Calor (HI) - fórmula simple para T > 26.7°C
-                            if (t_c < 26.7) return t_c; // Por debajo de ~27°C, el HI es igual a la temperatura
-                            const t_f = t_c * 1.8 + 32; // Convertir a Fahrenheit para la fórmula
+                            // 4. Calculate Heat Index (HI) - simple formula for T > 26.7°C
+                            if (t_c < 26.7) return t_c; // Below ~27°C, HI is equal to the temperature
+                            const t_f = t_c * 1.8 + 32; // Convert to Fahrenheit for the formula
                             let hi_f = -42.379 + 2.04901523 * t_f + 10.14333127 * rh - 0.22475541 * t_f * rh - 6.83783e-3 * t_f * t_f - 5.481717e-2 * rh * rh + 1.22874e-3 * t_f * t_f * rh + 8.5282e-4 * t_f * rh * rh - 1.99e-6 * t_f * t_f * rh * rh;
-                            return (hi_f - 32) / 1.8; // Convertir de vuelta a Celsius
+                            return (hi_f - 32) / 1.8; // Convert back to Celsius
                         });
                         console.log(`       Values (Heat Index): [${heatIndexData.map(v => v.toFixed(2)).join(', ')}]`);
                         return heatIndexData;
                     }
-
-                    // Si no es 'incomodo' ni 'ventoso', pero es un array, devolvemos vacío para evitar errores.
+                    // If it's not 'incomodo' or 'windy', but it's an array, return empty to avoid errors.
                     return []; 
                 } else { // Caso de variable simple
-                    let dataUrl;
-                    // --- CORRECCIÓN: La estructura de GPM IMERG Daily es diferente ---
-                    // No tiene dimensión de tiempo, y el orden de lat/lon puede ser distinto.
-                    // La estructura es [lon][lat] para este dataset.
-                    // --- CORRECCIÓN FINAL: La variable NO está en un nodo "Grid" y no tiene dimensión de tiempo ---
-                    // --- CORRECCIÓN GPM: La estructura es [tiempo][lon][lat], se debe incluir el índice de tiempo [0]. ---
+                    let dataUrl; // Simple variable case
+                    // --- FIX: The GPM IMERG Daily structure is different ---
+                    // It has no time dimension, and the lat/lon order may be different.
+                    // The structure is [lon][lat] for this dataset.
+                    // --- FINAL FIX: The variable is NOT in a "Grid" node and has no time dimension ---
+                    // --- GPM FIX: The structure is [time][lon][lat], the time index [0] must be included. ---
                     if (urlTemplate.includes('GPM_3IMERGDF')) {
                         dataUrl = encodeURI(`${url}.json?${config.apiVariable}[0][${lonIndex}][${latIndex}]`);
                     } else {
                         dataUrl = encodeURI(`${url}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`);
                     }
                     const dataResponse = await fetchWithCurl(dataUrl, true);
-                    // La respuesta de GPM es diferente, el dato viene en un nodo "Grid"
+                    // The GPM response is different, the data comes in a "Grid" node
                     const dataLeaf = dataResponse.nodes?.[0]?.leaves?.find(l => l.name === config.apiVariable) || dataResponse.nodes?.find(n => n.name === 'Grid')?.leaves?.find(l => l.name === config.apiVariable);
                     if (!dataLeaf?.data) throw new Error("Datos simples incompletos");
-                    let simpleData = dataLeaf.data.flat(Infinity); // GPM Daily tiene un solo valor
+                    let simpleData = dataLeaf.data.flat(Infinity); // GPM Daily has a single value
                     
-                    // --- CONVERSIÓN DE UNIDADES ---
+                    // --- UNIT CONVERSION ---
                     if (variableName === 'rainy' && urlTemplate.includes('GPM_3IMERGDF')) {
-                        // CORRECCIÓN: GPM Daily (GPM_3IMERGDF) viene en mm/hr. Se debe multiplicar por 24 para obtener mm/día.
-                        // El valor es un array con un solo elemento.
+                        // FIX: GPM Daily (GPM_3IMERGDF) comes in mm/hr. It must be multiplied by 24 to get mm/day.
+                        // The value is an array with a single element.
                         simpleData = [simpleData[0] * 24];
-                    } else if (variableName === 'snowy') { // Assuming snowy will use MERRA-2 (kg m-2 s-1)
-                        simpleData = simpleData.map(v => v * 86400);
+                    } else if (config.apiVariable === 'PRECSN') { // Logic for Snow
+                        // --- SNOW CONVERSION LOGIC ---
+                        // PRECSN is a flux (kg m-2 s-1). To get the daily total in mm:
+                        const sumOfHourlyRates = simpleData.reduce((total, rateStr) => total + (parseFloat(rateStr) || 0), 0);
+                        const totalNieveDiaria = sumOfHourlyRates * 3600;
+
+                        simpleData = [totalNieveDiaria]; // We return a single daily value.
+                    } else if (config.apiVariable === 'T2M') {
+                        // --- DIFFERENTIATED LOGIC FOR WARM AND COLD ---
+                        if (config.isBelowThresholdWorse === false) { // This is 'warm'
+                            // For 'warm', we are interested in the MAXIMUM of the day.
+                            const maxTempOfDay = Math.max(...simpleData.filter(v => isFinite(v)));
+                            simpleData = isFinite(maxTempOfDay) ? [maxTempOfDay] : [];
+                        } else { // This is 'cold'
+                            // For 'cold', we are interested in the MINIMUM of the day.
+                            const minTempOfDay = Math.min(...simpleData.filter(v => isFinite(v)));
+                            simpleData = isFinite(minTempOfDay) ? [minTempOfDay] : [];
+                        }
+                    } else if (config.apiVariable === 'CLDTOT') {
+                        // For 'cloudy', we average the daily cloud fraction and convert it to a percentage.
+                        const sumOfHourlyFractions = simpleData.reduce((total, fracStr) => total + (parseFloat(fracStr) || 0), 0);
+                        const averageDailyFraction = sumOfHourlyFractions / simpleData.length;
+
+                        simpleData = [averageDailyFraction * 100]; // Convert to percentage (0-100)
                     }
 
                     console.log(`[NASA API] Download for year ${year} completed. URL: ${dataUrl}`);
-                    console.log(`       Values (${config.apiVariable}): [${simpleData.map(v => v.toFixed(5)).join(', ')}]`); // IMPROVEMENT: Show more decimals
+                    console.log(`       Calculated Daily Total (${config.apiVariable}): [${simpleData[0]?.toFixed(8) || 'ERROR'}]`);
                     return simpleData;
                 }
             };
-
             try {
                 return await fetchData(currentUrl);
             } catch (e) {
-                // --- MEJORA: Lógica de reintento para MERRA2_401 ---
-                // Si el error es por recibir HTML (síntoma de un 404) y cumple las condiciones, reintentamos.
+                // --- IMPROVEMENT: Retry logic for MERRA2_401 ---
+                // If the error is due to receiving HTML (a symptom of a 404) and the conditions are met, we retry.
                 if (year >= 2011 && currentUrl.includes("MERRA2_400") && e.message.includes("Parece ser una página HTML")) {
-                    console.warn(`[WARN] Download failed with MERRA2_400 for year ${year}. Retrying with MERRA2_401...`);
+                    console.warn(`[WARN] Download with MERRA2_400 failed for year ${year}. Retrying with MERRA2_401...`);
                     const retryUrl = currentUrl.replace("MERRA2_400", "MERRA2_401");
                     return await fetchData(retryUrl).catch(retryError => {
                         console.error(`[ERROR] Retry with MERRA2_401 also failed for year ${year}. Skipping...`);
-                        // --- MEJORA: Loguear URLs específicas en el fallo del reintento ---
+                        // --- IMPROVEMENT: Log specific URLs on retry failure ---
                         if (Array.isArray(config.apiVariable)) {
                             const failedUrls = config.apiVariable.map(v => encodeURI(`${retryUrl}.json?${v}[0:1:23][${latIndex}][${lonIndex}]`));
                             console.error(`       Failed URLs: ${failedUrls.join(', ')}`);
                         } else {
-                            console.error(`       Failed URL: ${encodeURI(`${retryUrl}.json?${config.apiVariable}[0:1-23][${latIndex}][${lonIndex}]`)}`);
+                            console.error(`       Failed URL: ${encodeURI(`${retryUrl}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`)}`);
                         }
-                        return [];
+                        return []; // Return empty array to continue
                     });
                 }
-                // --- MEJORA SOLICITADA: Loguear la URL que falla ---
+                // --- REQUESTED IMPROVEMENT: Log the failing URL ---
                 let failedUrl;
                 if (urlTemplate.includes('GPM_3IMERGDF')) {
-                    // --- CORRECCIÓN: Usar el formato de URL correcto para GPM en el log de errores ---
+                    // --- FIX: Use the correct URL format for GPM in the error log. ---
                     failedUrl = `${baseDatasetUrl}.json?${config.apiVariable}[0][${lonIndex}][${latIndex}]`;
                 } else if (Array.isArray(config.apiVariable)) {
-                    failedUrl = `${baseDatasetUrl} (for variables ${config.apiVariable.join(', ')})`;
+                    failedUrl = `${baseDatasetUrl} (para variables ${config.apiVariable.join(', ')})`;
                 } else {
                     failedUrl = `${baseDatasetUrl}.json?${config.apiVariable}[0:1:23][${latIndex}][${lonIndex}]`;
                 }
-
-                // Si un año falla (ej. archivo no existe), lo ignoramos y continuamos.
+                // If a year fails (e.g., file does not exist), we ignore it and continue.
                 console.warn(`[WARN] Could not get data for year ${year}. Skipping...`);
                 console.warn(`       Failed URL: ${failedUrl}`);
                 return [];
@@ -567,111 +534,98 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
         };
         yearPromises.push(fetchYearData(baseDatasetUrl));
     }
-
-    // 3. Ejecutar todas las peticiones en paralelo y recolectar los datos
+    // 3. Execute all requests in parallel and collect the data
     const yearlyData = await Promise.all(yearPromises);
     yearlyData.forEach(values => allHistoricalValues.push(...values.filter(isFinite)));
-
     if (allHistoricalValues.length === 0) {
-        throw new Error(`No valid historical data found for the date ${day}/${month} in all consulted years.`);
+        throw new Error(`No valid historical data found for the date ${day}/${month} in all queried years.`);
     }
-
-    // 4. Calcular estadísticas sobre el conjunto de datos completo
+    // 4. Calculate statistics on the complete dataset
     allHistoricalValues.sort((a, b) => a - b);
     const mean = allHistoricalValues.reduce((a, b) => a + b, 0) / allHistoricalValues.length;
     const p10 = allHistoricalValues[Math.floor(allHistoricalValues.length * 0.10)];
     const p90 = allHistoricalValues[Math.floor(allHistoricalValues.length * 0.90)];
-    // --- NUEVO CÁLCULO: Desviación Estándar ---
+    // --- NEW CALCULATION: Standard Deviation ---
     const variance = allHistoricalValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / (allHistoricalValues.length - 1);
     const stdDev = Math.sqrt(variance);
-
     console.log(`[Stats] Final historical average calculated: ${mean.toFixed(4)}`);
     const stats = { mean, p10, p90, stdDev, values: allHistoricalValues, fromCache: !!cachedStat };
-
-    // 5. Guardar las nuevas estadísticas en la caché de la BD
-    if (!cachedStat) { // Solo guardamos si no existía en la caché
+    // 5. Save the new statistics to the DB cache
+    if (!cachedStat) { // Only save if it didn't exist in the cache
         const newStat = new HistoricalStat({
             day, month, latIndex, lonIndex, variable: variableName,
             mean: stats.mean, p10: stats.p10, p90: stats.p90, stdDev: stats.stdDev
         });
         await newStat.save();
-        console.log(`[Cache-Stats] New statistics saved to DB.`);
+        console.log(`[Cache-Stats] New statistics saved to the DB.`);
     }
-
     return stats;
 }
-
 // =================================================================
-//                 RUTA PRINCIPAL DE LA API
+//                          API MAIN ROUTE
 // =================================================================
 app.post("/api/climate-probability", async (req, res) => {
     const { lat, lon, day, month, variable } = req.body;
-    const HISTORICAL_RANGE = `1980-${new Date().getFullYear()}`; // Rango de años para mostrar en la descripción
-
-    // --- MEJORA: Implementar lógica de caché con la base de datos ---
+    const HISTORICAL_RANGE = `1980-${new Date().getFullYear()}`; // Range of years to display in the description
+    // --- IMPROVEMENT: Implement caching logic with the database ---
     try {
-        // --- CORRECCIÓN DE CACHÉ: Redondear coordenadas para una caché más efectiva ---
+        // --- CACHE FIX: Round coordinates for a more effective cache ---
         const latRounded = parseFloat(lat.toFixed(2));
         const lonRounded = parseFloat(lon.toFixed(2));
         const cachedResult = await ClimateDay.findOne({ lat: latRounded, lon: lonRounded, day, month, variable });
-
         if (cachedResult) {
-            console.log(`[Cache] Result found in database for ${variable} at (Lat:${latRounded}, Lon:${lonRounded})`);
-            return res.json(cachedResult); // Devuelve el resultado cacheado y termina la ejecución.
+            console.log(`[Cache] Result found in the database for ${variable} at (Lat:${latRounded}, Lon:${lonRounded})`);
+            return res.json(cachedResult); // Return the cached result and end execution.
         }
     } catch (cacheError) {
         console.error("[Cache] Error searching the database cache:", cacheError.message);
     }
-
     try {
         const config = CONFIG_VARIABLES_NASA[variable];
         if (!config) {
-            return res.status(400).json({ success: false, message: `Variable '${variable}' not supported.` });
+            return res.status(400).json({ success: false, message: `Variable '${variable}' is not supported.` });
         }
-
-        // --- CORRECCIÓN: Definir variables de fecha al principio ---
+        // --- FIX: Define date variables at the beginning ---
         const monthStr = String(month).padStart(2, '0');
         const dayStr = String(day).padStart(2, '0');
-
-        console.log(`\n[Request] Processing: ${variable} for ${day}/${month} at (Lat:${lat}, Lon:${lon})`);
-
+        console.log(`\n[Request] Procesando: ${variable} para ${day}/${month} en (Lat:${lat}, Lon:${lon})`);
         let referenceDatasetUrl;
-
         if (config.datasetUrlTemplate.includes('GPM_3IMERGDF')) {
-            // Para GPM, la grilla es constante, podemos usar cualquier archivo válido.
-            // --- MEJORA: Usar una fecha fija y sabida que existe para la referencia de coordenadas ---
+            // For GPM, the grid is constant, we can use any valid file.
+            // --- IMPROVEMENT: Use a fixed, known-to-exist date for the coordinate reference ---
             const referenceDatasetFileName = `3B-DAY.MS.MRG.3IMERG.20230101-S000000-E235959.V07B.nc4`;
             referenceDatasetUrl = `${config.datasetUrlTemplate}/2023/01/${referenceDatasetFileName}`;
         } else {
-            // Para MERRA-2, usamos un año de referencia para obtener la grilla.
+            // For MERRA-2, we use a reference year to get the grid.
             const referenceYear = '2016';
-            const datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : 'slv';
+            let datasetType;
+            if (config.datasetUrlTemplate.includes('AER')) datasetType = 'aer';
+            else if (config.datasetUrlTemplate.includes('INT')) datasetType = 'int';
+            else if (config.datasetUrlTemplate.includes('RAD')) datasetType = 'rad';
+            else datasetType = 'slv';
+
             const referenceFilePrefix = getMerra2FilePrefix(referenceYear);
             const referenceDatasetFileName = `MERRA2_${referenceFilePrefix}.tavg1_2d_${datasetType}_Nx.${referenceYear}${monthStr}${dayStr}.nc4`;
             referenceDatasetUrl = `${config.datasetUrlTemplate}/${referenceYear}/${monthStr}/${referenceDatasetFileName}`;
         }
-
-        // 1. Obtener coordenadas y encontrar índices
+        // 1. Get coordinates and find indices
         const { lats, lons } = await getCoordinates(referenceDatasetUrl);
         const latIndex = findClosestIndex(lat, lats);
         const lonIndex = findClosestIndex(lon, lons);
-        console.log(`[Index] Indexes found -> Lat: ${latIndex}, Lon: ${lonIndex}`);
-
-        // 2. Obtener estadísticas históricas (de la BD o calculándolas)
+        console.log(`[Index] Indices found -> Lat: ${latIndex}, Lon: ${lonIndex}`);
+        // 2. Get historical statistics (from DB or by calculating them)
         const stats = await getHistoricalStatistics(config, day, month, latIndex, lonIndex);
         const displayThreshold = config.isBelowThresholdWorse ? stats.p10 : stats.p90;
-
-        // --- LÓGICA DE PROBABILIDAD ABSOLUTA (GENERAL) ---
-        // Mapea un valor de un rango a otro (ej. temperatura a un porcentaje)
+        // --- ABSOLUTE PROBABILITY LOGIC (GENERAL) ---
+        // Maps a value from one range to another (e.g., temperature to a percentage)
         const mapRange = (value, in_min, in_max, out_min, out_max) => {
             return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         };
-
         let probability;
-        // Escalas absolutas para cada variable
+        // Absolute scales for each variable
         switch (variable) {
-            case 'warm': // Scale from 20°C (293.15K) to 35°C (308.15K)
-                probability = mapRange(stats.mean, 293.15, 308.15, 0, 100);
+            case 'warm': // Adjusted scale for higher sensitivity: 24°C (297.15K) to 32°C (305.15K)
+                probability = mapRange(stats.mean, 297.15, 305.15, 0, 100);
                 break;
             case 'cold': // NEW SCALE: 20°C (293.15K) to 0°C (273.15K)
                 probability = mapRange(stats.mean, 293.15, 273.15, 0, 100);
@@ -685,66 +639,64 @@ app.post("/api/climate-probability", async (req, res) => {
             case 'humid': // Scale from 0.005 kg/kg to 0.020 kg/kg
                 probability = mapRange(stats.mean, 0.005, 0.020, 0, 100);
                 break;
-            case 'uncomfortable': // Heat Index scale from 27°C to 41°C
+            case 'incomodo': // Heat Index scale from 27°C to 41°C
                 probability = mapRange(stats.mean, 27, 41, 0, 100);
                 break;
             case 'rainy': {
-                // --- CORRECCIÓN: La probabilidad de lluvia se basa en la frecuencia, no en la cantidad promedio ---
-                // Contamos cuántos días en el historial tuvieron una precipitación significativa (> 0.2 mm/día)
-                // y aplicamos Suavizado de Laplace (add-one smoothing) para evitar probabilidades de 0% o 100%.
+                // --- FIX: Probability of rain is based on frequency, not average amount ---
+                // We count how many days in the history had significant precipitation (> 0.2 mm/day)
+                // and apply Laplace smoothing (add-one smoothing) to avoid 0% or 100% probabilities.
                 const diasConLluvia = stats.values.filter(p => p > 0.2).length;
                 const totalDias = stats.values.length;
-                // Fórmula: ((aciertos + 1) / (total de intentos + 2)) * 100
+                // Formula: ((hits + 1) / (total attempts + 2)) * 100
                 probability = totalDias > 0 ? ((diasConLluvia + 1) / (totalDias + 2)) * 100 : 0;
                 break;
             }
-            case 'snowy':
-                probability = 0; // Lógica pendiente
+            case 'snowy': {
+                // Adjusted scale: 0 mm/day -> 0%, 10 mm/day (~10 cm of snow) -> 100%
+                probability = mapRange(stats.mean, 0, 10, 0, 100);
                 break;
+            }
             case 'cloudy':
-                probability = 0; // Lógica pendiente
+                // For cloudy, the historical mean (which is already in %) is directly the probability.
+                probability = stats.mean;
                 break;
             default:
-                // Fallback por si se añade una variable sin escala definida
+                // Fallback in case a variable is added without a defined scale
                 probability = 0;
         }
-
-        // Asegurarse de que la probabilidad esté entre 0 y 100
+        // Ensure the probability is between 0 and 100
         probability = Math.max(0, Math.min(100, Math.round(probability)));
-
-        // 4. Formatear y enviar respuesta
+        // 4. Format and send response
         const detailDescription = `The probability of the '${variable}' condition occurring is ${probability}%, based on the historical average of ${stats.mean.toFixed(2)} ${config.unit} for the range ${HISTORICAL_RANGE}.`;
-
         const result = {
             success: true,
             location: `(Lat: ${lats[latIndex].toFixed(2)}, Lon: ${lons[lonIndex].toFixed(2)})`,
             date: `${day}/${month}`,
             variable: variable,
             probability: probability,
-            historicalMean: parseFloat(stats.mean.toFixed(4)), // MEJORA: Enviar más decimales al frontend
-            threshold: parseFloat(displayThreshold.toFixed(1)), // Mostramos el percentil como umbral principal
+            historicalMean: parseFloat(stats.mean.toFixed(4)), // IMPROVEMENT: Send more decimals to the frontend
+            threshold: parseFloat(displayThreshold.toFixed(1)), // We show the percentile as the main threshold
             unit: config.unit,
             detailDescription: detailDescription,
-            downloadLink: "https://disc.gsfc.nasa.gov/datasets/M2T1NXSLV_5.12.4/summary" // Link genérico a la colección
+            downloadLink: "https://disc.gsfc.nasa.gov/datasets/M2T1NXSLV_5.12.4/summary" // Generic link to the collection
         };
         
-        // 5. Guardar en DB el resultado final para el usuario
+        // 5. Save the final result to the DB for the user
         try {
-            // --- CORRECCIÓN DE CACHÉ: Guardar con las coordenadas redondeadas ---
+            // --- CACHE FIX: Save with rounded coordinates ---
             const latRounded = parseFloat(lat.toFixed(2));
             const lonRounded = parseFloat(lon.toFixed(2));
             const record = new ClimateDay({ ...result, lat: latRounded, lon: lonRounded, day, month });
-
             await record.save();
-            console.log("[DB] Result saved to the database successfully.");
-            // --- CORRECCIÓN: Enviar la respuesta DESPUÉS de guardar en la BD ---
+            console.log("[DB] Result successfully saved to the database.");
+            // --- FIX: Send the response AFTER saving to the DB ---
             res.json(result);
         } catch (dbError) {
             console.error("[DB] Error saving the result:", dbError.message);
-            // Si falla el guardado, igualmente enviamos el resultado al usuario.
+            // If saving fails, we still send the result to the user.
             res.json(result);
         }
-
     } catch (error) {
         console.error("❌ FATAL ERROR IN API ROUTE:", error.message);
         if (error.response?.status === 401) {
@@ -753,35 +705,31 @@ app.post("/api/climate-probability", async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error.", error: error.message });
     }
 });
-
-
 // =================================================================
-//              RUTAS ADICIONALES Y ARRANQUE DEL SERVIDOR
+//              ADDITIONAL ROUTES AND SERVER STARTUP
 // =================================================================
 /**
- * RUTA DE UTILIDAD: Borra todos los documentos de la colección ClimateDay.
- * Útil para limpiar la base de datos durante el desarrollo.
- * Para usarla, puedes hacer una petición DELETE desde Postman o curl a:
- * http://localhost:3000/api/clear-cache
+ * UTILITY ROUTE: Deletes all documents from the ClimateDay collection.
+ * Useful for cleaning the database during development.
+ * To use it, you can make a DELETE request from Postman or curl to:
+ * http://localhost:3001/api/clear-cache
  */
 app.delete("/api/clear-cache", async (req, res) => {
     try {
-        // --- MEJORA: Añadir limpieza de ambas cachés ---
+        // --- IMPROVEMENT: Add cleaning for both caches ---
         const climateResult = await ClimateDay.deleteMany({});
         const statsResult = await HistoricalStat.deleteMany({});
         const message = `Cache cleared: ${climateResult.deletedCount} climate results and ${statsResult.deletedCount} statistics records deleted.`;
         console.log(`[Cache] ${message}`);
         res.json({ success: true, message });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Error clearing cache.", error: error.message });
+        res.status(500).json({ success: false, message: "Error clearing the cache.", error: error.message });
     }
 });
-
 app.get("/", (req, res) => {
     res.send("AstroCast API Server (OPeNDAP) is running.");
 });
-
 app.listen(port, () => {
-    console.log(`\n🚀 AstroCast API Server running at http://localhost:${port}`);
-    console.log(`   Ensure your environment variables (.env) are configured.`);
+    console.log(`\n🚀 AstroCast API server running on http://localhost:${port}`);
+    console.log(`   Make sure your environment variables (.env) are configured.`);
 });
