@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./History.css";
 
-// Definición de los hitos (1980 - 2025)
+// Milestone definitions (1980 - 2025)
 const timelineEvents = [
     {
         year: "1980",
@@ -115,12 +115,12 @@ const timelineEvents = [
 
 const History = () => {
     const itemsRef = useRef([]);
-    const epilogueRef = useRef(null); // ✅ Añadimos una ref para la conclusión
+    const epilogueRef = useRef(null); // ✅ Add a ref for the conclusion
 
-    // --- MEJORA: Estado para gestionar la imagen expandida en el modal ---
+    // --- IMPROVEMENT: State to manage the expanded image in the modal ---
     const [expandedImage, setExpandedImage] = useState(null);
 
-    // Lógica para observar la visibilidad y aplicar la clase 'visible' (Animación)
+    // Logic to observe visibility and apply the 'visible' class (Animation)
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -131,14 +131,14 @@ const History = () => {
                     }
                 });
             },
-            { threshold: 0.1 } // El elemento se considera visible cuando el 10% está en pantalla
+            { threshold: 0.1 } // The element is considered visible when 10% is on screen
         );
 
         itemsRef.current.forEach((item) => {
             if (item) observer.observe(item);
         });
 
-        // ✅ Observamos también el elemento de la conclusión
+        // ✅ We also observe the conclusion element
         if (epilogueRef.current) {
             observer.observe(epilogueRef.current);
         }
@@ -146,7 +146,7 @@ const History = () => {
         return () => observer.disconnect();
     }, []);
 
-    // --- MEJORA: Funciones para manejar el modal de la imagen ---
+    // --- IMPROVEMENT: Functions to handle the image modal ---
     const handleImageClick = (imageUrl) => {
         setExpandedImage(imageUrl);
     };
@@ -162,7 +162,7 @@ const History = () => {
                 The timeline that changed everything. A journey through the crucial events that have shaped our understanding of climate change and the invaluable contribution of NASA's Earth observation.
             </p>
             
-            {/* PRÓLOGO MAGNÍFICO CON TRANSICIÓN NARRATIVA */}
+            {/* MAGNIFICENT PROLOGUE WITH NARRATIVE TRANSITION */}
             <div className="timeline-manifesto">
                 <p>
                     In the early <strong>1980s</strong>, the global climate response was in its <strong>Era of Observation</strong>. Science, driven by systems like NASA's <strong>Earth observation</strong>, began to provide the <strong>undeniable data</strong> that quantified environmental damage and confirmed global warming.
@@ -190,7 +190,7 @@ const History = () => {
                             <h2>{event.year}</h2>
                             <h3>{event.title}</h3>
                             <p>{event.description}</p>
-                            {/* Mostrar imagen solo si la URL está definida */}
+                            {/* Show image only if the URL is defined */}
                             {event.image && (
                                 <img 
                                     src={event.image} 
@@ -201,7 +201,7 @@ const History = () => {
                             )}
                         </div>
 
-                        {/* ✅ CÁPSULA DE CONTEXTO: Se renderiza en el espacio vacío */}
+                        {/* ✅ CONTEXT CAPSULE: Renders in the empty space */}
                         {event.context && (
                             <div className="timeline-context-box">
                                 <span className="context-icon">{event.context.icon}</span>
@@ -212,7 +212,7 @@ const History = () => {
                 ))}
             </div>
 
-            {/* --- SECCIÓN DE CONCLUSIÓN ELEGANTE --- */}
+            {/* --- ELEGANT CONCLUSION SECTION --- */}
             <div className="timeline-epilogue" ref={epilogueRef}>
                 <h2>The Future is Now</h2>
                 <p>
@@ -226,7 +226,7 @@ const History = () => {
                 </p>
             </div>
 
-            {/* --- MEJORA: Modal para la imagen expandida --- */}
+            {/* --- IMPROVEMENT: Modal for the expanded image --- */}
             {expandedImage && (
                 <div className="image-modal-overlay" onClick={handleCloseModal}>
                     <button className="close-modal-btn" onClick={handleCloseModal}>&times;</button>
