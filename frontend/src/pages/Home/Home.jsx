@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Home.css'; 
 import ProbabilityCard from '../../components/ProbabilityCard';
 import { FaSearch } from 'react-icons/fa'; // Importamos el ícono de búsqueda
@@ -7,6 +7,9 @@ import DistributionChart from '../../components/DistributionChart';
 import Chatbox from '../../components/Chatbox';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+
+
+
 
 // --- MEJORA: URL de API dinámica y robusta ---
 // Determina si estamos en un entorno de desarrollo local o en la red.
@@ -34,6 +37,9 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
+
+
+
 
 function LocationMarker({ location, setLocation }) {
     const map = useMap();
@@ -67,6 +73,18 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
     const [results, setResults] = useState(null); 
     const [loading, setLoading] = useState(false); 
     const [error, setError] = useState(null);
+
+    // --- MEJORA: Ref para la sección de resultados ---
+    const resultsRef = useRef(null);
+
+    // --- MEJORA: Efecto para hacer scroll automático ---
+    useEffect(() => {
+        // Si hay resultados y el ref está adjunto al elemento del DOM...
+        if (results && resultsRef.current) {
+            // ...hacemos scroll hacia ese elemento con una animación suave.
+            resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [results]); // Este efecto se ejecuta cada vez que el estado 'results' cambia.
 
     const handleLocationChange = (e) => {
         const { name, value } = e.target;
@@ -299,7 +317,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
             )}
 
             {results && (
-                <div className="results-section">
+                <div className="results-section" ref={resultsRef}>
                     <h2 className="results-header">
                         Historical Results for {results.location || 'Location'} on {results.date || 'Date'}
                     </h2>
