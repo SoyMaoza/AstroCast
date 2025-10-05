@@ -19,6 +19,10 @@ const isDevelopment = import.meta.env.DEV;
 const backendHostname = isDevelopment ? 'localhost' : window.location.hostname;
 const API_BASE_URL = `http://${backendHostname}:3001/api`;
 
+// --- MEJORA: Funciones de conversión de temperatura ---
+const kelvinToCelsius = (k) => k - 273.15;
+const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
+
 // Variables climáticas
 const VARIABLES = [
     { value: 'warm', label: '☀️ Very Warm' },
@@ -74,6 +78,9 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
     const [results, setResults] = useState(null); 
     const [loading, setLoading] = useState(false); 
     const [error, setError] = useState(null);
+
+    // --- MEJORA: Estado para el selector de unidades de temperatura ---
+    const [temperatureUnit, setTemperatureUnit] = useState('C'); // Por defecto en Celsius
 
     // --- MEJORA: Ref para la sección de resultados ---
     const resultsRef = useRef(null);
@@ -190,16 +197,45 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
         }
     };
 
+    // --- FIX: Pass the selected temperature unit to the download endpoint ---
     const handleDownload = () => {
         const { lat, lon } = location;
         const { day, month } = date;
-        const downloadUrl = `${API_BASE_URL}/download-data?lat=${lat}&lon=${lon}&day=${day}&month=${month}&variable=${variable}&format=json`;
+        let downloadUrl = `${API_BASE_URL}/download-data?lat=${lat}&lon=${lon}&day=${day}&month=${month}&variable=${variable}&format=json`;
+        // If it's a temperature variable, add the selected unit to the query
+        if (variable === 'warm' || variable === 'cold') {
+            downloadUrl += `&displayUnit=${temperatureUnit}`;
+        }
         window.open(downloadUrl, '_blank');
     };
 
     const getVariableButtonClass = (val) => 
         `variable-btn ${variable === val ? 'active' : ''}`;
 
+    // --- MEJORA: Lógica para mostrar la temperatura en la unidad seleccionada ---
+    const isTemperatureVariable = results && (results.variable === 'warm' || results.variable === 'cold');
+    
+    let displayMean = results ? results.historicalMean : 0;
+    let displayUnitSymbol = results ? results.unit : '';
+
+    if (results && isTemperatureVariable && results.unit === 'K') {
+        if (temperatureUnit === 'C') {
+            displayMean = kelvinToCelsius(results.historicalMean);
+            displayUnitSymbol = '°C';
+        } else if (temperatureUnit === 'F') {
+            displayMean = kelvinToFahrenheit(results.historicalMean);
+            displayUnitSymbol = '°F';
+        } else {
+            // Si es 'K', mantenemos los valores originales
+            displayMean = results.historicalMean;
+            displayUnitSymbol = 'K';
+        }
+    }
+
+    // --- FIX: Generate the detail description on the frontend to allow for unit conversion ---
+    const startYear = (results && (results.variable === 'rainy')) ? 1998 : 1980;
+    const historicalRange = `${startYear}-${new Date().getFullYear()}`;
+    const detailDescription = results ? `The probability of the '${results.variable}' condition occurring is ${results.probability}%, based on the historical average of ${displayMean.toFixed(2)} ${displayUnitSymbol} for the range ${historicalRange}.` : "";
     return (
         <div className="container homepage-container">
             <header className="page-header">
@@ -339,7 +375,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                                     Based on historical data, there is a <strong>{results.probability}%</strong> chance of this condition occurring.
                                 </p>
                                 <p>
-                                    The historical average for this day is <strong>{results.historicalMean.toFixed(2)} {results.unit}</strong>.
+                                    {/* --- CORRECCIÓN: Usar las variables de visualización --- */}
+                                    The historical average for this day is <strong>{displayMean.toFixed(1)} {displayUnitSymbol}</strong>.
                                 </p>
                                 <button className="download-json-btn" onClick={handleDownload}>
                                     Download Raw Data (JSON)
@@ -349,14 +386,38 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
 
 
                         <div className="data-visualization-card">
+                            {/* --- MEJORA: Selector de unidades de temperatura --- */}
+                            {isTemperatureVariable && (
+                                <div className="unit-selector">
+                                    <button 
+                                        className={`unit-selector-btn ${temperatureUnit === 'C' ? 'active' : ''}`}
+                                        onClick={() => setTemperatureUnit('C')}
+                                    >
+                                        °C
+                                    </button>
+                                    <button 
+                                        className={`unit-selector-btn ${temperatureUnit === 'F' ? 'active' : ''}`}
+                                        onClick={() => setTemperatureUnit('F')}
+                                    >
+                                        °F
+                                    </button>
+                                    <button 
+                                        className={`unit-selector-btn ${temperatureUnit === 'K' ? 'active' : ''}`}
+                                        onClick={() => setTemperatureUnit('K')}
+                                    >
+                                        K
+                                    </button>
+                                </div>
+                            )}
                             <h3>Analysis Details</h3>
-                            <p className="detail-description">{results.detailDescription}</p>
+                            <p className="detail-description">{detailDescription}</p>
                             
                             <h3 style={{marginTop: '15px'}}>Visualization</h3>
                             <DistributionChart 
                                 mean={results.historicalMean}
                                 threshold={results.threshold}
                                 unit={results.unit}
+                                displayUnit={temperatureUnit} // Le pasamos la unidad seleccionada al gráfico
                             />
                             
                             {results.downloadLink && (

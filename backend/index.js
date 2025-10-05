@@ -710,7 +710,7 @@ app.post("/api/climate-probability", async (req, res) => {
 //              NEW DOWNLOAD DATA ROUTE
 // =================================================================
 app.get("/api/download-data", async (req, res) => {
-    const { lat, lon, day, month, variable, format } = req.query;
+    const { lat, lon, day, month, variable, format, displayUnit } = req.query; // <-- ADD: Read displayUnit
 
     if (!lat || !lon || !day || !month || !variable || !format) {
         return res.status(400).json({ success: false, message: "Missing required query parameters: lat, lon, day, month, variable, format." });
@@ -745,12 +745,29 @@ app.get("/api/download-data", async (req, res) => {
 
         const stats = await getHistoricalStatistics(config, parseInt(day), parseInt(month), latIndex, lonIndex);
 
+        // --- FIX: Convert temperature units for the downloaded file ---
+        let finalValues = stats.values;
+        let finalUnit = config.unit;
+
+        if ((variable === 'warm' || variable === 'cold') && config.unit === 'K' && displayUnit) {
+            if (displayUnit.toUpperCase() === 'C') {
+                finalValues = stats.values.map(k => k - 273.15);
+                finalUnit = '°C';
+                console.log(`[Download] Converting ${stats.values.length} values to Celsius.`);
+            } else if (displayUnit.toUpperCase() === 'F') {
+                finalValues = stats.values.map(k => (k - 273.15) * 9 / 5 + 32);
+                finalUnit = '°F';
+                console.log(`[Download] Converting ${stats.values.length} values to Fahrenheit.`);
+            }
+        }
+        // --- End of fix ---
+
         if (format.toLowerCase() === 'json') {
             const filename = `AstroCast_data_${variable}_${day}-${month}.json`;
             const jsonData = JSON.stringify({
                 query: { lat, lon, day, month, variable },
-                unit: config.unit,
-                historicalValues: stats.values
+                unit: finalUnit,
+                historicalValues: finalValues.map(v => parseFloat(v.toFixed(2))) // Round for cleaner output
             }, null, 2); // Pretty-print the JSON
 
             res.setHeader('Content-Disposition', `attachment; filename=${filename}`);

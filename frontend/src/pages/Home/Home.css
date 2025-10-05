@@ -312,3 +312,41 @@
         grid-column: span 1;
     }
 }
+
+/* --- MEJORA: Estilos para el selector de unidades de temperatura --- */
+.data-visualization-card {
+    position: relative; /* Necesario para posicionar el selector dentro */
+}
+
+.unit-selector {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    display: flex;
+    background-color: var(--color-background-light);
+    border-radius: 20px;
+    padding: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.unit-selector-btn {
+    padding: 6px 12px;
+    border: none;
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-radius: 16px;
+    transition: all 0.2s ease-in-out;
+}
+
+.unit-selector-btn:hover {
+    color: var(--color-primary-indigo);
+}
+
+.unit-selector-btn.active {
+    background-color: var(--color-card-bg);
+    color: var(--color-primary-indigo);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}

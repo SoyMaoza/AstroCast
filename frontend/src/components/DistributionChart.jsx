@@ -1,6 +1,12 @@
 import React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Label, ReferenceArea } from 'recharts';
 
+// --- MEJORA: Funciones de conversión de temperatura ---
+const kelvinToCelsius = (k) => k - 273.15;
+const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
+
+
+
 /**
  * Calcula los puntos para una curva de distribución normal (Campana de Gauss).
  * @param {number} mean - La media (μ) de la distribución.
@@ -19,7 +25,7 @@ const generateBellCurveData = (mean, stdDev) => {
     return data;
 };
 
-const DistributionChart = ({ mean, threshold, unit }) => {
+const DistributionChart = ({ mean, threshold, unit, displayUnit = 'C' }) => {
     // Asumimos una desviación estándar para la visualización. 
     // Un valor entre 5 y 10 suele funcionar bien para temperaturas en K.
     const stdDev = 8; 
@@ -33,16 +39,41 @@ const DistributionChart = ({ mean, threshold, unit }) => {
             </div>
         );
     }
-    const chartData = generateBellCurveData(mean, stdDev);
+
+    // --- MEJORA: Conversión de unidades para visualización ---
+    let displayMean = mean;
+    let displayThreshold = threshold;
+    let displayUnitSymbol = unit;
+    let chartData = generateBellCurveData(mean, stdDev);
+
+    if (unit === 'K') {
+        if (displayUnit === 'C') {
+            displayMean = kelvinToCelsius(mean);
+            displayThreshold = kelvinToCelsius(threshold);
+            chartData = chartData.map(d => ({ ...d, x: kelvinToCelsius(d.x) }));
+            displayUnitSymbol = '°C';
+        } else if (displayUnit === 'F') {
+            displayMean = kelvinToFahrenheit(mean);
+            displayThreshold = kelvinToFahrenheit(threshold);
+            chartData = chartData.map(d => ({ ...d, x: kelvinToFahrenheit(d.x) }));
+            displayUnitSymbol = '°F';
+        }
+    }
 
     // Determina si el umbral representa un riesgo por ser alto o bajo
     const isRiskHigh = threshold > mean;
 
     // Encuentra el valor máximo y mínimo en el eje X para delimitar el área de riesgo
-    const xDomain = [chartData[0].x, chartData[chartData.length - 1].x];
+    // Usamos los valores originales en Kelvin para la lógica del área de riesgo
+    const originalChartData = generateBellCurveData(mean, stdDev);
+    const xDomain = [originalChartData[0].x, originalChartData[originalChartData.length - 1].x];
 
     // --- MEJORA: Evitar solapamiento de etiquetas ---
-    const areLabelsClose = Math.abs(mean - threshold) < 12;
+    // La cercanía se calcula sobre los valores mostrados
+    const areLabelsClose = Math.abs(displayMean - displayThreshold) < (displayMean / 4);
+
+    // Formateador para el tooltip
+    const tooltipFormatter = (value, name, props) => [`${props.payload.x.toFixed(1)} ${displayUnitSymbol}`, 'Value'];
 
     return (
         <div style={{ width: '100%', height: 250 }}>
@@ -61,12 +92,13 @@ const DistributionChart = ({ mean, threshold, unit }) => {
                         dataKey="x" 
                         type="number"
                         domain={['dataMin', 'dataMax']}
+                        tickFormatter={(tick) => tick.toFixed(0)}
                         tick={{ fontSize: 12, fill: '#757575' }}
-                        label={{ value: `Valor (${unit})`, position: 'insideBottom', offset: -10, fill: '#757575' }}
+                        label={{ value: `Value (${displayUnitSymbol})`, position: 'insideBottom', offset: -10, fill: '#757575' }}
                     />
                     <YAxis hide={true} domain={[0, 'dataMax']} />
                     <Tooltip
-                        formatter={(value, name, props) => [`${props.payload.x} ${unit}`, 'Valor']}
+                        formatter={tooltipFormatter}
                         labelFormatter={() => ''}
                         cursor={{ stroke: '#3F51B5', strokeWidth: 1, strokeDasharray: '3 3' }}
                         contentStyle={{
@@ -81,19 +113,19 @@ const DistributionChart = ({ mean, threshold, unit }) => {
 
                     {/* --- MEJORA: Área de Riesgo Sombreada --- */}
                     <ReferenceArea
-                        x1={isRiskHigh ? threshold : xDomain[0]}
-                        x2={isRiskHigh ? xDomain[1] : threshold}
+                        x1={isRiskHigh ? displayThreshold : chartData[0].x}
+                        x2={isRiskHigh ? chartData[chartData.length - 1].x : displayThreshold}
                         stroke="none"
                         fill="#F44336" // Rojo de riesgo
                         fillOpacity={0.2} // Hacemos el color semitransparente
                     >
-                        <Label value="Zona de Riesgo" position="insideTop" fill="#B71C1C" fontSize={12} />
+                        <Label value="Risk Zone" position="insideTop" fill="#B71C1C" fontSize={12} />
                     </ReferenceArea>
 
                     {/* Línea de la Media Histórica */}
-                    <ReferenceLine x={mean} stroke="#2196F3" strokeWidth={2} strokeDasharray="4 4">
+                    <ReferenceLine x={displayMean} stroke="#2196F3" strokeWidth={2} strokeDasharray="4 4">
                         <Label 
-                            value={`Media: ${mean.toFixed(1)}`} 
+                            value={`Average: ${displayMean.toFixed(1)}`} 
                             position="top" 
                             fill="#1E88E5"
                             fontSize={12} 
@@ -101,10 +133,10 @@ const DistributionChart = ({ mean, threshold, unit }) => {
                     </ReferenceLine>
 
                     {/* Línea del Umbral de Riesgo */}
-                    <ReferenceLine x={threshold} stroke="#F44336" strokeWidth={2}>
+                    <ReferenceLine x={displayThreshold} stroke="#F44336" strokeWidth={2}>
                         {/* --- MEJORA: Posiciona la etiqueta dentro del área de riesgo si está muy cerca de la media --- */}
                         <Label 
-                            value={`Límite: ${threshold.toFixed(1)}`} 
+                            value={`Limit: ${displayThreshold.toFixed(1)}`} 
                             position={areLabelsClose ? "insideTopRight" : "top"}
                             fill="#F44336" 
                             fontSize={12} 
