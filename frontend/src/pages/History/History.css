@@ -1,36 +1,73 @@
 /* PALETA DE COLORES (NASA/Tech):
-   - Azul Noche (Principal): #0a192f
-   - Cian Aqua (Accent): #00adb5
-   - Texto Principal: #333333
+    - Azul Noche (Principal): #0a192f
+    - Cian Aqua (Accent): #00adb5
+    - Texto Principal: #333333
 */
 
 .history-container {
     padding: 60px 20px;
-    background-color: #ffffff; /* Fondo blanco (mantenido) */
+    background-color: #ffffff;
     color: #333333;
     font-family: 'Inter', sans-serif;
     max-width: 1200px;
     margin: 0 auto;
 }
 
+/* ✅ MEJORA: Animación de entrada para los elementos de la cabecera */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* --- TÍTULOS Y DESCRIPCIÓN --- */
 .history-title {
     text-align: center;
-    font-size: 3rem;
+    font-size: 3.2rem;
     font-weight: 900;
     margin-bottom: 20px;
-    color: #0a192f;
+    /* ✅ MEJORA: Gradiente de texto para un look llamativo y moderno */
+    background: linear-gradient(90deg, #0a192f 0%, #00adb5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
+    /* Aplicamos la animación */
+    opacity: 0; /* Estado inicial */
+    animation: fadeInUp 0.6s ease-out 0.2s forwards;
 }
 
 .history-intro {
     text-align: center;
     max-width: 800px;
     margin: 0 auto 70px auto;
-    font-size: 1.15rem;
-    color: #555555;
+    font-size: 1.2rem;
+    color: #444;
     line-height: 1.8;
+    position: relative;
+    padding-bottom: 30px;
+    /* Aplicamos la animación con retraso */
+    opacity: 0; /* Estado inicial */
+    animation: fadeInUp 0.6s ease-out 0.4s forwards;
+}
+
+/* ✅ MEJORA: Separador elegante debajo de la introducción */
+.history-intro::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 2px;
+    background: linear-gradient(90deg, #0a192f, #00adb5);
 }
 
 /* --- ESTRUCTURA DE LA LÍNEA DE TIEMPO --- */
@@ -44,23 +81,27 @@
 .timeline::after {
     content: '';
     position: absolute;
-    width: 4px; 
-    background-color: #e0e0e0; 
+    width: 4px;
+    background-color: #e0e0e0;
     top: 0;
     bottom: 0;
-    left: 50%;
+    left: 53%;
     margin-left: -2px;
+    /* ✅ CORRECCIÓN: Asignamos un z-index bajo para que siempre esté en el fondo */
+    z-index: 1;
 }
 
 .timeline-item {
-    padding: 10px 40px;
+    /* Padding original: 10px 40px, lo vamos a ajustar en left/right */
+    padding: 10px 0; 
     position: relative;
     background-color: inherit;
     width: 50%;
-    /* Estilos de animación */
     opacity: 0;
     transform: translateY(40px);
     transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+    /* ✅ CORRECCIÓN: Damos un z-index más alto para que el item y sus hijos estén por delante */
+    z-index: 5;
 }
 
 /* Círculo en la línea de tiempo - ACCENT COLOR */
@@ -69,10 +110,11 @@
     position: absolute;
     width: 24px;
     height: 24px;
-    right: -12px;
-    background-color: #0a192f;
-    border: 4px solid #00adb5; /* Cian Aqua */
+    /* ✅ Mantiene el círculo centrado en el borde derecho del elemento */
+    right: 15px; 
     top: 25px;
+    background-color: #0a192f; /* Azul Noche */
+    border: 4px solid #00adb5; /* Cian Aqua */
     border-radius: 50%;
     z-index: 10;
     box-shadow: 0 0 0 3px #ffffff;
@@ -84,27 +126,34 @@
     transform: translateY(0);
 }
 
+
 .timeline-item.left {
     left: 0;
+    /* ✅ CORRECCIÓN CLAVE: Empuja el contenido lejos de la línea central */
+    padding-right: 60px;
 }
 
 .timeline-item.right {
     left: 50%;
+    /* ✅ CORRECCIÓN CLAVE: Empuja el contenido lejos de la línea central */
+    padding-left: 60px;
 }
 
 /* Ajustar el círculo para los items de la derecha */
 .timeline-item.right::after {
-    left: -12px;
+    /* ✅ Centra el círculo en el borde izquierdo del elemento */
+    left: 14px;
+    right: auto;
 }
 
 /* --- CONTENIDO DEL EVENTO (TARJETA) --- */
 .timeline-content {
     padding: 30px;
-    background-color: #f8f8f8; 
+    background-color: #f8f8f8;
     border: 1px solid #e9ecef;
     border-radius: 10px;
     position: relative;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     transition: box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
@@ -115,7 +164,7 @@
 
 /* Estilos para el contenedor del año y etapa */
 .timeline-content h2 {
-    margin: 0 10px 0 0; 
+    margin: 0 10px 0 0;
     font-size: 1.8rem;
     color: #0a192f;
     font-weight: 800;
@@ -127,19 +176,16 @@
     display: inline-block;
     padding: 5px 12px;
     margin-bottom: 15px;
-    /* Colores invertidos para mayor impacto visual */
-    background-color: #0a192f; /* Fondo Azul Noche (más oscuro) */
-    color: #ffffff; /* Letras Blancas */
-    
+    background-color: #0a192f;
+    color: #ffffff;
     font-weight: 700;
     font-size: 0.9rem;
     border-radius: 5px;
     letter-spacing: 0.5px;
     text-transform: uppercase;
-    position: relative; 
-    top: -5px; 
-    /* Borde sutil del color accent para resaltarla */
-    border: 1px solid #00adb5; 
+    position: relative;
+    top: -5px;
+    border: 1px solid #00adb5;
 }
 
 /* Título del evento */
@@ -147,9 +193,14 @@
     margin: 0 0 15px 0;
     font-size: 1.25rem;
     font-weight: 700;
-    color: #00adb5; /* Cian Aqua */
     border-bottom: 2px solid #e0e0e0;
     padding-bottom: 5px;
+    /* ✅ MEJORA: Aplicamos el mismo gradiente que en la conclusión */
+    background: linear-gradient(90deg, #0a192f 0%, #00adb5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
 }
 
 .timeline-content p {
@@ -167,6 +218,15 @@
     border-radius: 8px;
     border: 3px solid #00adb5;
     display: block;
+    /* ✅ MEJORA: Añadimos transición para la animación de hover */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+/* ✅ MEJORA: Animación de zoom al pasar el ratón sobre la imagen */
+.timeline-content img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 20px rgba(0, 173, 181, 0.4);
 }
 
 /* Flechas/Puntas de las tarjetas */
@@ -174,7 +234,8 @@
     content: "";
     position: absolute;
     top: 30px;
-    right: -10px;
+    /* ✅ Alinea con el círculo. Asegura que el borde de la tarjeta (1px) + el ancho de la flecha (10px) + el hueco (8px) dé un margen limpio */
+    right: -11px; 
     border-style: solid;
     border-width: 10px 0 10px 10px;
     border-color: transparent transparent transparent #f8f8f8;
@@ -184,10 +245,12 @@
     content: "";
     position: absolute;
     top: 30px;
-    left: -10px;
+    /* ✅ Misma lógica, alineado con el círculo del lado izquierdo */
+    left: -11px;
     border-style: solid;
     border-width: 10px 10px 10px 0;
     border-color: transparent #f8f8f8 transparent transparent;
+    z-index: 11;
 }
 
 
@@ -199,18 +262,30 @@
 
     /* La línea de tiempo se mueve a la izquierda */
     .timeline::after {
-        left: 35px;
+        left: 35px; /* Línea central móvil a 35px */
     }
 
     /* Todos los items se alinean a la derecha de la línea */
     .timeline-item {
         width: 100%;
-        padding-left: 80px;
+        /* ✅ Asegura el espacio suficiente para la línea y el círculo */
+        padding-left: 80px; 
         padding-right: 10px;
+        /* Restablecer el padding para móvil */
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    /* Forzar todos los items a la izquierda en móvil */
+    .timeline-item.left,
+    .timeline-item.right {
+        left: 0;
+        padding-right: 10px; /* Anula el padding de escritorio */
     }
 
     /* El círculo se posiciona en la línea vertical */
     .timeline-item::after {
+        /* ✅ Centrado en 35px de la línea: 35px (línea) - 12px (mitad del círculo) = 23px */
         left: 23px;
         right: auto;
     }
@@ -233,4 +308,223 @@
     .timeline-stage {
         top: 0;
     }
+} /* Cierre correcto del bloque @media para el timeline */
+
+
+/* --- ESTILOS PARA EL PRÓLOGO MAGNÍFICO (timeline-manifesto) --- */
+
+.timeline-manifesto {
+    /* 1. Centrado y Dimensiones */
+    /* ✅ MEJORA: Aumentamos el ancho para un aspecto más horizontal y panorámico */
+    max-width: 1000px;
+    margin: 40px auto 70px auto; /* Espacio antes y después de la caja */
+    padding: 30px 40px;
+    
+    /* 2. Colores y Estilos de Fondo */
+    /* ✅ MEJORA: Gradiente sutil para un look más premium */
+    background: linear-gradient(145deg, #0a192f, #061121);
+    color: #e0e6f0; /* Un blanco más suave para mejor lectura */
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25); /* Sombra más suave */
+    
+    /* 3. Borde de Acento (Destacado) */
+    border-left: 6px solid #00adb5; /* Línea Cian Aqua */
+    
+    /* 4. Tipografía General */
+    font-size: 1.15rem;
+    line-height: 1.8;
+    font-weight: 400;
+    /* Aplicamos la animación con más retraso */
+    opacity: 0; /* Estado inicial */
+    animation: fadeInUp 0.6s ease-out 0.6s forwards;
+}
+
+/* Estilo para los párrafos internos y la separación */
+.timeline-manifesto p {
+    margin-top: 0;
+    margin-bottom: 1.2em; /* Espacio entre los párrafos de etapas */
+}
+
+/* Estilo para las negritas (Énfasis del texto) */
+.timeline-manifesto strong {
+    color: #00adb5; /* Cian Aqua para resaltar */
+    font-weight: 700;
+}
+
+/* Estilo para la línea de transición final */
+.timeline-manifesto .manifesto-closer {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 173, 181, 0.2); /* Línea sólida con color de acento */
+    font-size: 1rem;
+    text-align: center;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.7); /* Color más tenue */
+}
+
+/* --- RESPONSIVO para que se vea bien en móviles (Solo para la caja del manifiesto) --- */
+@media screen and (max-width: 768px) {
+    .timeline-manifesto {
+        margin: 20px auto 40px auto;
+        padding: 20px 25px;
+        font-size: 1rem;
+        line-height: 1.7;
+    }
+}
+
+/* --- ESTILOS PARA EL EPÍLOGO (CONCLUSIÓN) --- */
+
+.timeline-epilogue {
+    border-left: 6px solid #00adb5;
+    max-width: 750px; /* ✅ Reducimos el ancho máximo */
+    margin: 120px auto 60px auto;
+    text-align: center;
+    position: relative;
+    /* ✅ MEJORA: Añadimos un fondo elegante y padding */
+    padding: 35px 45px; /* ✅ Reducimos el padding */
+    background: linear-gradient(145deg, #0a192f, #061121);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    /* ✅ MEJORA: Añadimos el estado inicial para la animación de scroll */
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+
+/* ✅ MEJORA: Clase que activa la animación de la conclusión */
+.timeline-epilogue.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Línea decorativa superior con el color de acento */
+/* ✅ CORRECCIÓN: Eliminamos el borde superior ya que ahora tenemos un contenedor */
+.timeline-epilogue::before {
+    content: none;
+}
+
+.timeline-epilogue h2 {
+    font-size: 2.0rem; /* ✅ Reducimos el tamaño del título */
+    margin-bottom: 20px;
+    font-weight: 800;
+    /* ✅ MEJORA: Aplicamos el mismo gradiente de texto que el título principal */
+    background: linear-gradient(90deg, #ffffff 0%, #00adb5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
+.timeline-epilogue p {
+    font-size: 1.05rem; /* ✅ Reducimos ligeramente el texto */
+    /* ✅ MEJORA: Color de texto claro para el fondo oscuro */
+    color: #e0e6f0;
+    line-height: 1.8;
+    margin-bottom: 1.5em;
+}
+
+.timeline-epilogue strong {
+    /* ✅ MEJORA: Color de acento para las negritas */
+    color: #00adb5;
+    font-weight: 700;
+}
+
+.timeline-epilogue .epilogue-closer {
+    font-style: italic;
+    /* ✅ MEJORA: Color más sutil para la frase final */
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+}
+
+/* --- ESTILOS PARA LAS CÁPSULAS DE CONTEXTO --- */
+
+.timeline-context-box {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 45%; /* Ocupa una parte del espacio vacío */
+    text-align: center;
+    padding: 15px;
+    color: #888;
+    font-size: 0.9rem;
+    font-style: italic;
+    opacity: 0; /* Inicialmente invisible para la animación */
+    transition: opacity 0.6s ease-out 0.4s; /* Aparece después de la tarjeta */
+}
+
+.timeline-item.visible .timeline-context-box {
+    opacity: 1; /* Se hace visible con la animación */
+}
+
+.context-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.timeline-item.left .timeline-context-box {
+    left: 105%; /* Se posiciona a la derecha de la tarjeta izquierda */
+}
+
+.timeline-item.right .timeline-context-box {
+    right: 105%; /* Se posiciona a la izquierda de la tarjeta derecha */
+}
+
+/* En móvil, ocultamos las cápsulas de contexto para mantener un diseño limpio */
+@media screen and (max-width: 900px) {
+    .timeline-context-box {
+        display: none;
+    }
+}
+
+/* --- ESTILOS PARA EL MODAL DE IMAGEN EXPANDIDA --- */
+
+.image-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(10, 25, 47, 0.85); /* Azul Noche con transparencia */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    padding: 20px;
+    box-sizing: border-box;
+    animation: fadeInUp 0.3s ease-out; /* Reutilizamos la animación de entrada */
+}
+
+.image-modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.expanded-image {
+    display: block;
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 10px;
+    border: 4px solid #00adb5; /* Borde con color de acento */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.close-modal-btn {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 3rem;
+    font-weight: 300;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    z-index: 2001; /* Asegura que esté sobre la imagen */
+}
+
+.close-modal-btn:hover {
+    transform: scale(1.2);
 }
