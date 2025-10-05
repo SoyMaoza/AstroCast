@@ -43,12 +43,11 @@ app.post('/api/chat', async (req, res) => {
         const lowerCaseMessage = message.toLowerCase();
         console.log("Lowercase message for analysis:", `"${lowerCaseMessage}"`); // Log to see the message
         const esConsultaAyuda = (
-            lowerCaseMessage.includes('ayuda') ||
-            lowerCaseMessage.includes('info') ||
-            lowerCaseMessage.includes('soporte') ||
-            lowerCaseMessage.includes('usuario') ||
-            lowerCaseMessage.includes('compartir') ||
-            lowerCaseMessage.includes('historial')
+            lowerCaseMessage.includes('help') ||
+            lowerCaseMessage.includes('support') ||
+            lowerCaseMessage.includes('user') ||
+            lowerCaseMessage.includes('share') ||
+            lowerCaseMessage.includes('record')
         );
         if (esConsultaAyuda) {
             console.log("✅ HELP RULE ACTIVATED! Sending response with hyperlink.");
@@ -57,21 +56,22 @@ app.post('/api/chat', async (req, res) => {
         }
         console.log("ℹ️ Help rule was not triggered. Processing with other logic or with AI...");
         // --- Query Summary Logic ---
-        const pideResumenConsulta = (lat && lon && date) &&
-        (lowerCaseMessage.includes('mi información') ||
-        lowerCaseMessage.includes('mis datos') ||
-        lowerCaseMessage.includes('mi latitud') ||
-        lowerCaseMessage.includes('dame la informacion'));
-        if (pideResumenConsulta) {
+        const requestSummaryConsultation = (lat && lon && date) &&
+        (lowerCaseMessage.includes('information') ||
+        lowerCaseMessage.includes('data') ||
+        lowerCaseMessage.includes('latitude') ||
+        lowerCaseMessage.includes('longitude'));
+        if (requestSummaryConsultation) {
             console.log("✅ Summary logic activated.");
-            const textoRespuesta = `Of course! Here is the data for the query you have selected:\n\n- **Location:**\n  - Latitude: ${lat}\n  - Longitude: ${lon}\n- **Selected Date:**\n  - Month: ${date.split('-')[0]}\n  - Day: ${date.split('-')[1]}\n- **Condition to Analyze:** ${variable || 'Not selected'}\n\nIf you want me to analyze the weather for this data, just ask something like: "tell me the weather forecast".`;
-            return res.json({ text: textoRespuesta });
+            const answerTest = `Of course! Here is the data for the query you have selected:\n\n- **Location:**\n  - Latitude: ${lat}\n  - Longitude: ${lon}\n- **Selected Date:**\n  - Month: ${date.split('-')[0]}\n  - Day: ${date.split('-')[1]}\n- **Condition to Analyze:** ${variable || 'Not selected'}\n\nIf you want me to analyze the weather for this data, just ask something like: "tell me the weather forecast".`;
+            return res.json({ text: answerTest });
         }
         // --- Climate Logic ---
         const esConsultaClima = (lat && lon && date) &&
-        (lowerCaseMessage.includes('clima') ||
+        (lowerCaseMessage.includes('weather') ||
         lowerCaseMessage.includes('pronóstico') ||
-        lowerCaseMessage.includes('analiza') ||
+        lowerCaseMessage.includes('weather') ||
+        lowerCaseMessage.includes('forecast') ||
         lowerCaseMessage.includes('dime'));
         let responseText;
         if (esConsultaClima) {
