@@ -18,7 +18,8 @@ app.use(express.json());
 
 const corsOptions = {
   origin: [
-    'http://localhost:5173', // tu Vite local
+    'http://localhost:5173', // Vite local development
+    'https://astro-cast.vercel.app', // Vercel frontend deployment
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -146,7 +147,7 @@ const ClimateDaySchema = new mongoose.Schema({
     month: { type: Number, required: true },
     lat: { type: Number, required: true },
     lon: { type: Number, required: true }, // 'lluvioso' is not a valid enum value for path `variable`.
-    variable: { type: String, required: true, enum: ["warm", "cold", "windy", "dusty", "humid", "incomodo", "lluvioso", "snowy", "cloudy"] },
+    variable: { type: String, required: true, enum: ["warm", "cold", "windy", "dusty", "humid", "incomodo", "rainy", "snowy", "cloudy"] },
     probability: { type: Number, required: true },
     historicalMean: { type: Number, required: true },
     threshold: { type: Number, required: true },
@@ -244,8 +245,8 @@ const CONFIG_VARIABLES_NASA = {
     cloudy: {
         apiVariable: "CLDTOT", // Total Cloud Fraction
         datasetUrlTemplate: MERRA2_RAD_URL_TEMPLATE,
-        unit: "%", // The API gives it as a fraction (0-1), we will convert it
-        threshold: (stats) => stats.p90,
+        unit: "fraction (0-1)", // The API gives it as a fraction (0-1)
+        threshold: (stats) => 0.75, // A day is "very cloudy" if its average cloud cover is >= 75%
         isBelowThresholdWorse: false,
     },
 };
@@ -523,11 +524,11 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
                             simpleData = isFinite(minTempOfDay) ? [minTempOfDay] : [];
                         }
                     } else if (config.apiVariable === 'CLDTOT') {
-                        // For 'cloudy', we average the daily cloud fraction and convert it to a percentage.
+                        // For 'cloudy', we average the daily cloud fraction. The value remains a fraction (0-1).
                         const sumOfHourlyFractions = simpleData.reduce((total, fracStr) => total + (parseFloat(fracStr) || 0), 0);
                         const averageDailyFraction = sumOfHourlyFractions / simpleData.length;
 
-                        simpleData = [averageDailyFraction * 100]; // Convert to percentage (0-100)
+                        simpleData = [averageDailyFraction]; // Keep as a fraction (0-1)
                     }
 
                     console.log(`[NASA API] Download for year ${year} completed. URL: ${dataUrl}`);
@@ -653,7 +654,10 @@ app.post("/api/climate-probability", async (req, res) => {
         console.log(`[Index] Indices found -> Lat: ${latIndex}, Lon: ${lonIndex}`);
         // 2. Get historical statistics (from DB or by calculating them)
         const stats = await getHistoricalStatistics(config, day, month, latIndex, lonIndex);
-        const displayThreshold = config.isBelowThresholdWorse ? stats.p10 : stats.p90;
+        
+        // --- FIX: Use the actual threshold from the config function ---
+        // This ensures that fixed values (like 0.75 for 'cloudy') are sent correctly.
+        const displayThreshold = config.threshold(stats);
         // --- ABSOLUTE PROBABILITY LOGIC (GENERAL) ---
         // Maps a value from one range to another (e.g., temperature to a percentage)
         const mapRange = (value, in_min, in_max, out_min, out_max) => {
@@ -696,8 +700,12 @@ app.post("/api/climate-probability", async (req, res) => {
                 break;
             }
             case 'cloudy':
-                // For cloudy, the historical mean (which is already in %) is directly the probability.
-                probability = stats.mean;
+                // --- NEW LOGIC: Probability of cloudy is based on frequency, not average amount ---
+                // We count how many days in the history had significant cloudiness (>= 0.75)
+                const diasNublados = stats.values.filter(c => c >= 0.75).length;
+                const totalDiasNubes = stats.values.length;
+                // Laplace smoothing to avoid 0% or 100%
+                probability = totalDiasNubes > 0 ? ((diasNublados + 1) / (totalDiasNubes + 2)) * 100 : 0;
                 break;
             default:
                 // Fallback in case a variable is added without a defined scale
@@ -717,7 +725,7 @@ app.post("/api/climate-probability", async (req, res) => {
             variable: variable,
             probability: probability,
             historicalMean: parseFloat(stats.mean.toFixed(4)), // IMPROVEMENT: Send more decimals to the frontend
-            threshold: parseFloat(displayThreshold.toFixed(1)), // We show the percentile as the main threshold
+            threshold: parseFloat(displayThreshold.toFixed(4)), // Send the correct threshold with more precision
             unit: config.unit,
             detailDescription: detailDescription,
             downloadLink: "https://disc.gsfc.nasa.gov/datasets/M2T1NXSLV_5.12.4/summary" // Generic link to the collection
@@ -744,6 +752,81 @@ app.post("/api/climate-probability", async (req, res) => {
             return res.status(401).json({ success: false, message: "NASA API Error: 401 Unauthorized. Check your credentials in the .env file" });
         }
         res.status(500).json({ success: false, message: "Internal server error.", error: error.message });
+    }
+});
+// =================================================================
+//              NEW DOWNLOAD DATA ROUTE
+// =================================================================
+app.get("/api/download-data", async (req, res) => {
+    const { lat, lon, day, month, variable, format, displayUnit } = req.query; // <-- ADD: Read displayUnit
+
+    if (!lat || !lon || !day || !month || !variable || !format) {
+        return res.status(400).json({ success: false, message: "Missing required query parameters: lat, lon, day, month, variable, format." });
+    }
+
+    console.log(`\n[Download Request] Preparing raw data for ${variable} on ${day}/${month} at (Lat:${lat}, Lon:${lon})`);
+
+    try {
+        const config = CONFIG_VARIABLES_NASA[variable];
+        if (!config) {
+            return res.status(400).json({ success: false, message: `Variable '${variable}' is not supported.` });
+        }
+
+        // --- Reusing existing logic to get data ---
+        const monthStr = String(month).padStart(2, '0');
+        const dayStr = String(day).padStart(2, '0');
+        let referenceDatasetUrl;
+        if (config.datasetUrlTemplate.includes('GPM_3IMERGDF')) {
+            const referenceDatasetFileName = `3B-DAY.MS.MRG.3IMERG.20230101-S000000-E235959.V07B.nc4`;
+            referenceDatasetUrl = `${config.datasetUrlTemplate}/2023/01/${referenceDatasetFileName}`;
+        } else {
+            const referenceYear = '2016';
+            let datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : (config.datasetUrlTemplate.includes('INT') ? 'int' : (config.datasetUrlTemplate.includes('RAD') ? 'rad' : 'slv'));
+            const referenceFilePrefix = getMerra2FilePrefix(referenceYear);
+            const referenceDatasetFileName = `MERRA2_${referenceFilePrefix}.tavg1_2d_${datasetType}_Nx.${referenceYear}${monthStr}${dayStr}.nc4`;
+            referenceDatasetUrl = `${config.datasetUrlTemplate}/${referenceYear}/${monthStr}/${referenceDatasetFileName}`;
+        }
+
+        const { lats, lons } = await getCoordinates(referenceDatasetUrl);
+        const latIndex = findClosestIndex(lat, lats);
+        const lonIndex = findClosestIndex(lon, lons);
+
+        const stats = await getHistoricalStatistics(config, parseInt(day), parseInt(month), latIndex, lonIndex);
+
+        // --- FIX: Convert temperature units for the downloaded file ---
+        let finalValues = stats.values;
+        let finalUnit = config.unit;
+
+        if ((variable === 'warm' || variable === 'cold') && config.unit === 'K' && displayUnit) {
+            if (displayUnit.toUpperCase() === 'C') {
+                finalValues = stats.values.map(k => k - 273.15);
+                finalUnit = '°C';
+                console.log(`[Download] Converting ${stats.values.length} values to Celsius.`);
+            } else if (displayUnit.toUpperCase() === 'F') {
+                finalValues = stats.values.map(k => (k - 273.15) * 9 / 5 + 32);
+                finalUnit = '°F';
+                console.log(`[Download] Converting ${stats.values.length} values to Fahrenheit.`);
+            }
+        }
+        // --- End of fix ---
+
+        if (format.toLowerCase() === 'json') {
+            const filename = `AstroCast_data_${variable}_${day}-${month}.json`;
+            const jsonData = JSON.stringify({
+                query: { lat, lon, day, month, variable },
+                unit: finalUnit,
+                historicalValues: finalValues.map(v => parseFloat(v.toFixed(2))) // Round for cleaner output
+            }, null, 2); // Pretty-print the JSON
+
+            res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+            res.setHeader('Content-Type', 'application/json');
+            res.send(jsonData);
+        } else {
+            res.status(400).json({ success: false, message: `Format '${format}' is not supported. Please use 'json'.` });
+        }
+    } catch (error) {
+        console.error("❌ FATAL ERROR IN DOWNLOAD ROUTE:", error.message);
+        res.status(500).json({ success: false, message: "Internal server error while preparing data for download.", error: error.message });
     }
 });
 // =================================================================

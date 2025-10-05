@@ -7,9 +7,12 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-lea
 import DistributionChart from '../../components/DistributionChart';
 // El Chatbox ya no se importa ni se renderiza aquí, vive en App.jsx
 import 'leaflet/dist/leaflet.css';
+import html2canvas from 'html2canvas';
 import L from 'leaflet';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+// Use the environment variable for the backend URL in production,
+// otherwise fall back to the local URL for development.
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
 
 const kelvinToCelsius = (k) => k - 273.15;
 const kelvinToFahrenheit = (k) => (k - 273.15) * 9/5 + 32;
@@ -56,6 +59,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
   const [error, setError] = useState(null);
   const [temperatureUnit, setTemperatureUnit] = useState('C');
   const resultsRef = useRef(null);
+  const chartRef = useRef(null); // <-- NEW: Ref to capture the chart element
 
   useEffect(() => {
     if (localResults && resultsRef.current) {
@@ -156,6 +160,30 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
     }
   }
 
+  // --- NEW: Chart Download Functionality ---
+  const handleChartDownload = async () => {
+    if (!chartRef.current) {
+      console.error("Chart element not found for download.");
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(chartRef.current, {
+        useCORS: true, // Important for external images/fonts if any
+        backgroundColor: '#FFFFFF', // --- FIX: Use a solid white background for the download ---
+      });
+      const image = canvas.toDataURL('image/png', 1.0);
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `AstroCast_Chart_${variable}_${date.day}-${date.month}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Error generating chart image:", err);
+    }
+  };
+
   return (
     <div className="container homepage-container">
       <header className="page-header">
@@ -206,8 +234,19 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
         </div>
         <div className="map-card">
           <h3 className="map-title">Selected Location</h3>
-          <MapContainer center={[location.lat, location.lon]} zoom={5} scrollWheelZoom style={{ height: '100%', width: '100%', borderRadius: '8px' }}>
-            <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <MapContainer 
+            center={[location.lat, location.lon]} 
+            zoom={5} 
+            scrollWheelZoom 
+            style={{ height: '100%', width: '100%', borderRadius: '8px' }}
+            maxBounds={[[-85.0511, -Infinity], [85.0511, Infinity]]} /* Limits vertical panning but allows infinite horizontal scroll */
+            maxBoundsViscosity={1.0}                                 /* Makes the vertical boundaries solid */
+            minZoom={1}                                  /* Prevents zooming out too far */
+          >
+            <TileLayer
+              attribution='&copy; OpenStreetMap'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
             <LocationMarker location={location} setLocation={setLocation} />
           </MapContainer>
         </div>
@@ -224,7 +263,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
               <Gauge probability={localResults.probability} />
               <div className="probability-details">
                 <p>Based on historical data, there is a <strong>{localResults.probability}%</strong> chance of this condition occurring.</p>
-                <p>The historical average is <strong>{displayMean.toFixed(localResults.variable === 'rainy' ? 2 : 1)} {displayUnitSymbol}</strong>.</p>
+                <p>The historical average is <strong>{displayMean.toFixed(2)} {displayUnitSymbol}</strong>.</p>
                 <button className="download-json-btn" onClick={handleDownload}>
                   Download Raw Data (JSON)
                 </button>
@@ -243,12 +282,26 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
               <h3>Analysis Details</h3>
               <p className="detail-description">{/* Puedes reconstruir este texto si lo necesitas */}</p>
               <h3 style={{ marginTop: '15px' }}>Visualization</h3>
-              <DistributionChart 
-                mean={localResults.historicalMean}
-                threshold={localResults.threshold}
-                unit={localResults.unit}
-                displayUnit={temperatureUnit}
-              />
+              <div ref={chartRef}> {/* <-- NEW: Wrapper with ref for capturing */}
+                <DistributionChart 
+                  mean={localResults.historicalMean}
+                  threshold={localResults.threshold}
+                  unit={localResults.unit}
+                  displayUnit={temperatureUnit}
+                />
+              </div>
+              {/* --- NEW DOWNLOAD BUTTON AS REQUESTED --- */}
+              <div className="chart-actions">
+                <button className="chart-download-btn" title="Download Chart" onClick={handleChartDownload}>
+                  <img src="/assets/icons/graph-download-icon.svg" alt="Download icon" />
+                </button>
+              </div>
+
+              {localResults.downloadLink && (
+                <a href={localResults.downloadLink} target="_blank" rel="noopener noreferrer" className="download-link">
+                  Download Historical Data from NASA (OPeNDAP) ↓
+                </a>
+              )}
             </div>
           </div>
         </div>
