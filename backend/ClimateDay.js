@@ -5,7 +5,7 @@ const ClimateDaySchema = new mongoose.Schema({
     month: { type: Number, required: true },
     lat: { type: Number, required: true },
     lon: { type: Number, required: true },
-    variable: { type: String, required: true, enum: ["warm", "cold", "windy", "dusty", "humid", "uncomfortable", "rainy", "snowy", "cloudy"] },
+    variable: { type: String, required: true, enum: ["warm", "cold", "windy", "dusty", "humid", "incomodo", "rainy", "snowy", "cloudy"] },
     probability: { type: Number, required: true },
     historicalMean: { type: Number, required: true },
     threshold: { type: Number, required: true },

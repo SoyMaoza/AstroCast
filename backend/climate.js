@@ -69,8 +69,8 @@ router.post("/climate-probability", async (req, res) => {
             case 'cold': probability = mapRange(stats.mean, 293.15, 273.15, 0, 100); break;
             case 'windy': probability = mapRange(stats.mean, 0, 15, 0, 100); break;
             case 'dusty': probability = mapRange(stats.mean, 0, 0.1, 0, 100); break;
-            case 'humid': probability = mapRange(stats.mean, 0.005, 0.020, 0, 100); break;
-            case 'uncomfortable': probability = mapRange(stats.mean, 27, 41, 0, 100); break;
+            case 'humid': probability = mapRange(stats.mean, 0.005, 0.020, 0, 100); break; // Corrected variable name
+            case 'incomodo': probability = mapRange(stats.mean, 27, 41, 0, 100); break;
             case 'rainy': {
                 const diasConLluvia = stats.values.filter(p => p > 0.2).length;
                 const totalDias = stats.values.length;
