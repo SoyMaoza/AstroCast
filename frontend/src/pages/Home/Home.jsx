@@ -24,7 +24,6 @@ const VARIABLES = [
     { value: 'rainy', label: '🌧️ Very Rainy' },
     { value: 'snowy', label: '❄️ Very Snowy' },
     { value: 'cloudy', label: '☁️ Very Cloudy' },
-    { value: 'uncomfortable', label: '🥵 Very Uncomfortable' },
     { value: 'dusty', label: '🌪️ Very Dusty' },
 ];
 
