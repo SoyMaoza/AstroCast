@@ -14,16 +14,20 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.use(cors({
-  origin: ['https://astro-cast.vercel.app', 'http://localhost:5173'], // Orígenes permitidos
-  methods: ['GET','POST','OPTIONS'],
-  allowedHeaders: ['Content-Type']
-}));
+
 
 // ✅ Middleware para parsear JSON
 app.use(express.json());
 
+const corsOptions = {
+  origin: [
+    'http://localhost:5173', // tu Vite local
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
 
+app.use(cors(corsOptions));
 // --- Gemini Configuration ---
 const API_KEY = process.env.API_KEY;
 const ai = new GoogleGenAI({ apiKey: API_KEY });

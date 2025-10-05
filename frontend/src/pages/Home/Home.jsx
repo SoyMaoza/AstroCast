@@ -20,7 +20,8 @@ import L from 'leaflet';
 //       : 'http://localhost:3001');
 
 // 🔹 URL base para todos los endpoints de API
-const API_BASE_URL = ('http://localhost:3001/api'  || `import.meta.env.VITE_BACKEND_URL`).replace(/\/+$/, '')
+const API_BASE_URL = 'http://localhost:3001/api'
+
 
 // 🔹 URL específica para chat (opcional)
 const CHAT_API_URL = `${API_BASE_URL}/chat`;
