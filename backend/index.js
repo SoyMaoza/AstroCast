@@ -707,6 +707,64 @@ app.post("/api/climate-probability", async (req, res) => {
     }
 });
 // =================================================================
+//              NEW DOWNLOAD DATA ROUTE
+// =================================================================
+app.get("/api/download-data", async (req, res) => {
+    const { lat, lon, day, month, variable, format } = req.query;
+
+    if (!lat || !lon || !day || !month || !variable || !format) {
+        return res.status(400).json({ success: false, message: "Missing required query parameters: lat, lon, day, month, variable, format." });
+    }
+
+    console.log(`\n[Download Request] Preparing raw data for ${variable} on ${day}/${month} at (Lat:${lat}, Lon:${lon})`);
+
+    try {
+        const config = CONFIG_VARIABLES_NASA[variable];
+        if (!config) {
+            return res.status(400).json({ success: false, message: `Variable '${variable}' is not supported.` });
+        }
+
+        // --- Reusing existing logic to get data ---
+        const monthStr = String(month).padStart(2, '0');
+        const dayStr = String(day).padStart(2, '0');
+        let referenceDatasetUrl;
+        if (config.datasetUrlTemplate.includes('GPM_3IMERGDF')) {
+            const referenceDatasetFileName = `3B-DAY.MS.MRG.3IMERG.20230101-S000000-E235959.V07B.nc4`;
+            referenceDatasetUrl = `${config.datasetUrlTemplate}/2023/01/${referenceDatasetFileName}`;
+        } else {
+            const referenceYear = '2016';
+            let datasetType = config.datasetUrlTemplate.includes('AER') ? 'aer' : (config.datasetUrlTemplate.includes('INT') ? 'int' : (config.datasetUrlTemplate.includes('RAD') ? 'rad' : 'slv'));
+            const referenceFilePrefix = getMerra2FilePrefix(referenceYear);
+            const referenceDatasetFileName = `MERRA2_${referenceFilePrefix}.tavg1_2d_${datasetType}_Nx.${referenceYear}${monthStr}${dayStr}.nc4`;
+            referenceDatasetUrl = `${config.datasetUrlTemplate}/${referenceYear}/${monthStr}/${referenceDatasetFileName}`;
+        }
+
+        const { lats, lons } = await getCoordinates(referenceDatasetUrl);
+        const latIndex = findClosestIndex(lat, lats);
+        const lonIndex = findClosestIndex(lon, lons);
+
+        const stats = await getHistoricalStatistics(config, parseInt(day), parseInt(month), latIndex, lonIndex);
+
+        if (format.toLowerCase() === 'json') {
+            const filename = `AstroCast_data_${variable}_${day}-${month}.json`;
+            const jsonData = JSON.stringify({
+                query: { lat, lon, day, month, variable },
+                unit: config.unit,
+                historicalValues: stats.values
+            }, null, 2); // Pretty-print the JSON
+
+            res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+            res.setHeader('Content-Type', 'application/json');
+            res.send(jsonData);
+        } else {
+            res.status(400).json({ success: false, message: `Format '${format}' is not supported. Please use 'json'.` });
+        }
+    } catch (error) {
+        console.error("❌ FATAL ERROR IN DOWNLOAD ROUTE:", error.message);
+        res.status(500).json({ success: false, message: "Internal server error while preparing data for download.", error: error.message });
+    }
+});
+// =================================================================
 //              ADDITIONAL ROUTES AND SERVER STARTUP
 // =================================================================
 /**

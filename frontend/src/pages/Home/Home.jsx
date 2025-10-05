@@ -17,7 +17,7 @@ import L from 'leaflet';
 // `import.meta.env.DEV` es una variable especial de Vite.
 const isDevelopment = import.meta.env.DEV;
 const backendHostname = isDevelopment ? 'localhost' : window.location.hostname;
-const API_URL = `http://${backendHostname}:3001/api/climate-probability`;
+const API_BASE_URL = `http://${backendHostname}:3001/api`;
 
 // Variables climáticas
 const VARIABLES = [
@@ -162,7 +162,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
         }
 
         try {
-            const response = await fetch(API_URL, {
+            const response = await fetch(`${API_BASE_URL}/climate-probability`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -188,6 +188,13 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
         } finally {
             setLoading(false); 
         }
+    };
+
+    const handleDownload = () => {
+        const { lat, lon } = location;
+        const { day, month } = date;
+        const downloadUrl = `${API_BASE_URL}/download-data?lat=${lat}&lon=${lon}&day=${day}&month=${month}&variable=${variable}&format=json`;
+        window.open(downloadUrl, '_blank');
     };
 
     const getVariableButtonClass = (val) => 
@@ -334,6 +341,9 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                                 <p>
                                     The historical average for this day is <strong>{results.historicalMean.toFixed(2)} {results.unit}</strong>.
                                 </p>
+                                <button className="download-json-btn" onClick={handleDownload}>
+                                    Download Raw Data (JSON)
+                                </button>
                             </div>
                         </div>
 
