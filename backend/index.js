@@ -190,8 +190,7 @@ const CONFIG_VARIABLES_NASA = {
     rainy: {
         apiVariable: "precipitation", // FINAL FIX: The variable in GPM IMERG V7 is 'precipitation'.
         datasetUrlTemplate: GPM_IMERG_URL_TEMPLATE,
-        startYear: 2000, // GPM IMERG data starts in June 2000
-        unit: "mm/day",
+        startYear: 1998, // GPM IMERG data starts in June 1998
         threshold: (stats) => stats.p90,
         isBelowThresholdWorse: false,
     },
@@ -566,7 +565,6 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
 // =================================================================
 app.post("/api/climate-probability", async (req, res) => {
     const { lat, lon, day, month, variable } = req.body;
-    const HISTORICAL_RANGE = `1980-${new Date().getFullYear()}`; // Range of years to display in the description
     // --- IMPROVEMENT: Implement caching logic with the database ---
     try {
         // --- CACHE FIX: Round coordinates for a more effective cache ---
@@ -668,7 +666,10 @@ app.post("/api/climate-probability", async (req, res) => {
         // Ensure the probability is between 0 and 100
         probability = Math.max(0, Math.min(100, Math.round(probability)));
         // 4. Format and send response
-        const detailDescription = `The probability of the '${variable}' condition occurring is ${probability}%, based on the historical average of ${stats.mean.toFixed(2)} ${config.unit} for the range ${HISTORICAL_RANGE}.`;
+        // --- FIX: Make the historical range dynamic based on the variable ---
+        const startYear = config.startYear || 1980;
+        const historicalRange = `${startYear}-${new Date().getFullYear()}`;
+        const detailDescription = `The probability of the '${variable}' condition occurring is ${probability}%, based on the historical average of ${stats.mean.toFixed(2)} ${config.unit} for the range ${historicalRange}.`;
         const result = {
             success: true,
             location: `(Lat: ${lats[latIndex].toFixed(2)}, Lon: ${lons[lonIndex].toFixed(2)})`,

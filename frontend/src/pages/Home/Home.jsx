@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Home.css'; 
 import ProbabilityCard from '../../components/ProbabilityCard';
+import Gauge from '../../components/Gauge'; // --- NUEVO: Importar el componente Gauge ---
 import { FaSearch } from 'react-icons/fa'; // Importamos el ícono de búsqueda
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import DistributionChart from '../../components/DistributionChart';
@@ -305,15 +306,19 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                     </h2>
                     
                     <div className="results-grid">
-                        <ProbabilityCard
-                            variable={results.variable} 
-                            probability={results.probability}
-                            historicalMean={results.historicalMean}
-                            threshold={results.threshold}
-                            unit={results.unit}
-                            downloadLink={results.downloadLink}
-                            detailDescription={results.detailDescription}
-                        />
+                        <div className="probability-card">
+                            <h3>Probability of '{results.variable}' Condition</h3>
+                            <Gauge probability={results.probability} />
+                            <div className="probability-details">
+                                <p>
+                                    Based on historical data, there is a <strong>{results.probability}%</strong> chance of this condition occurring.
+                                </p>
+                                <p>
+                                    The historical average for this day is <strong>{results.historicalMean.toFixed(2)} {results.unit}</strong>.
+                                </p>
+                            </div>
+                        </div>
+
 
                         <div className="data-visualization-card">
                             <h3>Analysis Details</h3>
