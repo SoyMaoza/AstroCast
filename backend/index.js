@@ -1,18 +1,29 @@
-// Using CommonJS:
+// ✅ Using CommonJS
 const express = require('express');
-const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
 const dotenv = require('dotenv');
-// NOTE: This file is required to exist in your structure:
-const { obtenerEstadisticasHistoricas } = require('./data/Clima.js');
+const mongoose = require('mongoose');
 const { execFile } = require('child_process');
+const { GoogleGenAI } = require('@google/genai');
+const { obtenerEstadisticasHistoricas } = require('./data/Clima.js');
+
+// ✅ Cargar variables de entorno
 dotenv.config();
-const mongoose = require("mongoose");
+
+// ✅ Crear app y definir puerto
 const app = express();
-const port = 3001;
-// Configure middlewares
-app.use(cors());
+const port = process.env.PORT || 3001;
+
+app.use(cors({
+  origin: ['https://astro-cast.vercel.app', 'http://localhost:5173'], // Orígenes permitidos
+  methods: ['GET','POST','OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}));
+
+// ✅ Middleware para parsear JSON
 app.use(express.json());
+
+
 // --- Gemini Configuration ---
 const API_KEY = process.env.API_KEY;
 const ai = new GoogleGenAI({ apiKey: API_KEY });
