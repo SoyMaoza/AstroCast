@@ -21,6 +21,8 @@ app.use((req, res, next) => {
 // 🛑 CORRECCIÓN: PASAMOS LA CLAVE EXPLÍCITAMENTE USANDO process.env 🛑
 const ai = new GoogleGenAI({ 
     apiKey: process.env.GEMINI_API_KEY 
+const ai = new GoogleGenAI({
+    apiKey: process.env.API_KEY // --- MEJORA: Usar el nombre de variable correcto del .env ---
 });
 const MODEL_NAME = "gemini-2.5-flash";
 

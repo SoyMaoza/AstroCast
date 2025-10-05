@@ -49,8 +49,9 @@ app.post('/api/chat', async (req, res) => {
             lowerCaseMessage.includes('share') ||
             lowerCaseMessage.includes('record') ||
             lowerCaseMessage.includes('faq') || // 'faq' is already a keyword
-            lowerCaseMessage.includes('pregunta') || // --- MEJORA: Entender "pregunta" o "preguntas" ---
-            lowerCaseMessage.includes('duda') // --- MEJORA: Entender "duda" o "dudas" ---
+            lowerCaseMessage.includes('help') || // --- MEJORA: Entender "pregunta" o "preguntas" ---
+            lowerCaseMessage.includes('question') || // --- MEJORA: Entender "pregunta" o "preguntas" ---
+            lowerCaseMessage.includes('doubt') // --- MEJORA: Entender "duda" o "dudas" ---
         );
         if (esConsultaAyuda) {
             console.log("✅ HELP RULE ACTIVATED! Sending redirect command to /faq.");
