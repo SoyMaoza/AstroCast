@@ -9,6 +9,7 @@ import DistributionChart from '../../components/DistributionChart';
 import 'leaflet/dist/leaflet.css';
 import html2canvas from 'html2canvas';
 import L from 'leaflet';
+import graph_download_icon from "../../components/assets/icons/graph-download-icon.svg";
 
 // Use the environment variable for the backend URL in production,
 // otherwise fall back to the local URL for development.
@@ -293,7 +294,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
               {/* --- NEW DOWNLOAD BUTTON AS REQUESTED --- */}
               <div className="chart-actions">
                 <button className="chart-download-btn" title="Download Chart" onClick={handleChartDownload}>
-                  <img src="/assets/icons/graph-download-icon.svg" alt="Download icon" />
+                  <img src={graph_download_icon} alt="Download icon" />
                 </button>
               </div>
 
