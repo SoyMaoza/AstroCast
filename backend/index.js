@@ -7,7 +7,7 @@ const { execFile } = require('child_process');
 const { GoogleGenAI } = require('@google/genai');
 const { obtenerEstadisticasHistoricas } = require('./data/Clima.js');
 
-// ✅ Cargar variables de entorno
+// ✅ Cargar variables de entornos
 dotenv.config();
 
 // ✅ Crear app y definir puerto
