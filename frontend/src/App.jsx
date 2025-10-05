@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 import Home from "./pages/Home/Home";
 import Faq from "./pages/faq/faq";
 import Chatbox from "./components/Chatbox";
+import Histories from "./pages/History/History";
 
 function App() {
   const [location, setLocation] = useState({ lat: 19.43, lon: -99.13 });
@@ -69,6 +70,7 @@ function App() {
           }
         />
         <Route path="/faq" element={<Faq />} />
+        <Route path="/history" element={<Histories/>} />
       </Routes>
       
       <Chatbox
