@@ -5,7 +5,7 @@ import Gauge from '../../components/Gauge'; // --- NUEVO: Importar el componente
 import { FaSearch } from 'react-icons/fa'; // Importamos el ícono de búsqueda
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import DistributionChart from '../../components/DistributionChart';
-// El Chatbox ya no se importa ni se renderiza aquí, vive en App.jsx
+// The Chatbox is no longer imported or rendered here; it lives in App.jsx
 import 'leaflet/dist/leaflet.css';
 import html2canvas from 'html2canvas';
 import L from 'leaflet';
@@ -51,9 +51,9 @@ function LocationMarker({ location, setLocation }) {
   return location.lat === null ? null : <Marker position={[location.lat, location.lon]} />;
 }
 
-// ✅ Recibe todos los estados y funciones necesarios desde App.jsx
+// ✅ Receives all necessary states and functions from App.jsx
 const HomePage = ({ location, setLocation, date, setDate, variable, setVariable, activity, setActivity, setResults }) => {
-  // Estado local solo para la UI de esta página
+  // Local state for this page's UI only
   const [localResults, setLocalResults] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,11 +72,11 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
     setLoading(true);
     setError(null);
     setLocalResults(null);
-    setResults(null); // Limpia los resultados globales en App.jsx para evitar re-triggers
+    setResults(null); // Clears the global results in App.jsx to avoid re-triggers
 
     const dayNum = parseInt(date.day, 10);
     const monthNum = parseInt(date.month, 10);
-    // ... (aquí iría la función de validación de fecha si la tienes)
+    // ... (date validation function would go here if you have one)
 
     try {
       const response = await fetch(`${API_BASE_URL}/climate-probability`, {
@@ -95,8 +95,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
       }
 
       const data = await response.json();
-      setLocalResults(data); // Actualiza la UI de esta página
-      setResults(data);     // ✅ Manda los resultados a App.jsx para que el Chatbox reaccione
+      setLocalResults(data); // Updates the UI of this page
+      setResults(data);     // ✅ Sends the results to App.jsx so the Chatbox can react
     } catch (err) {
       console.error("API query error:", err);
       setError(err.message || 'Unknown error connecting to the data service.');
