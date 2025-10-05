@@ -22,7 +22,7 @@ const COLECCIONES = {
  * @returns {Promise<EstadisticasClima>} Objeto con todas las estadísticas calculadas.
  */
 async function obtenerEstadisticasHistoricas(ubicacion, diaDelAnio, anioInicio, anioFin) {
-  console.log(" Iniciando análisis histórico para el día " + diaDelAnio + " desde " + anioInicio + " hasta " + anioFin + "...");
+  console.log(" Starting historical analysis for day " + diaDelAnio + " from " + anioInicio + " to " + anioFin + "...");
 const promesas = [];
   for (let anio = anioInicio; anio <= anioFin; anio++) {
     const fecha = `${anio}-${diaDelAnio}`;
@@ -57,7 +57,7 @@ async function obtenerDatosParaUnDia(ubicacion, fecha) {
       calidadAire: aireData.aerosoles
     };
   } catch (error) {
-   console.warn(`⚠️ No se pudieron obtener los datos para ${fecha}: ${error.message}`);
+   console.warn(`⚠️ Could not get data for ${fecha}: ${error.message}`);
     return null;
   }
 }
@@ -124,13 +124,13 @@ async function getDatosCalidadAire(ubicacion, fecha) {
 async function buscarYDescargarGranulo(short_name, fecha) {
   // Nota: Se usan backticks (`) para crear strings que incluyen variables. La sintaxis es correcta.
   const urlBusqueda = `https://cmr.earthdata.nasa.gov/search/granules.json?short_name=${short_name}&temporal=${fecha}T00:00:00Z,${fecha}T23:59:59Z&page_size=1`;
-  const respBusqueda = await fetch(urlBusqueda, { headers: { "Authorization": `Bearer ${TOKEN}` } }); // CORRECCIÓN: Usar backticks para interpolar
-  if (!respBusqueda.ok) throw new Error(`API Error en búsqueda (${short_name}): ${respBusqueda.status}`); // CORRECCIÓN: Usar backticks
+  const respBusqueda = await fetch(urlBusqueda, { headers: { "Authorization": `Bearer ${TOKEN}` } });
+  if (!respBusqueda.ok) throw new Error(`API Search Error (${short_name}): ${respBusqueda.status}`);
   const datos = await respBusqueda.json();
-  if (datos.feed.entry.length === 0) throw new Error(`No se encontró gránulo para ${short_name} en ${fecha}`); // CORRECCIÓN: Usar backticks
+  if (datos.feed.entry.length === 0) throw new Error(`No granule found for ${short_name} on ${fecha}`);
   const enlace = datos.feed.entry[0].links.find(link => link.rel.includes('data#')).href;
-  const respArchivo = await fetch(enlace, { headers: { Authorization: `Bearer ${TOKEN}` } }); // CORRECCIÓN: Usar backticks
-  if (!respArchivo.ok) throw new Error(`Error descargando archivo desde ${enlace}`); // CORRECCIÓN: Usar backticks
+  const respArchivo = await fetch(enlace, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  if (!respArchivo.ok) throw new Error(`Error downloading file from ${enlace}`);
   const buffer = await respArchivo.arrayBuffer();
   return { buffer, url: enlace };
 }

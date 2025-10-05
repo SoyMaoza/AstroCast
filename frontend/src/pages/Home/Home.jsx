@@ -17,15 +17,15 @@ const API_URL = `http://${backendHostname}:3001/api/climate-probability`;
 
 // Variables climáticas
 const VARIABLES = [
-    { value: 'calido', label: '☀️ Muy Cálido' },
-    { value: 'frio', label: '🥶 Muy Frío' },
-    { value: 'ventoso', label: '💨 Muy Ventoso' },
-    { value: 'humedo', label: '💧 Muy Húmedo' },
-    { value: 'lluvioso', label: '🌧️ Muy Lluvioso' },
-    { value: 'nevado', label: '❄️ Mucha Nieve' },
-    { value: 'nublado', label: '☁️ Muy Nublado' },
-    { value: 'incomodo', label: '🥵 Muy Incómodo' },
-    { value: 'polvo', label: '🌪️ Mucho Polvo' },
+    { value: 'warm', label: '☀️ Very Warm' },
+    { value: 'cold', label: '🥶 Very Cold' },
+    { value: 'windy', label: '💨 Very Windy' },
+    { value: 'humid', label: '💧 Very Humid' },
+    { value: 'rainy', label: '🌧️ Very Rainy' },
+    { value: 'snowy', label: '❄️ Very Snowy' },
+    { value: 'cloudy', label: '☁️ Very Cloudy' },
+    { value: 'uncomfortable', label: '🥵 Very Uncomfortable' },
+    { value: 'dusty', label: '🌪️ Very Dusty' },
 ];
 
 // Fix icono default Leaflet
@@ -91,14 +91,14 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
         const monthNum = parseInt(month, 10);
 
         if (isNaN(dayNum) || isNaN(monthNum) || dayNum < 1 || monthNum < 1) {
-            return 'El día y el mes deben ser números válidos.';
+            return 'Day and month must be valid numbers.';
         }
         if (monthNum > 12) {
-            return 'El mes no puede ser mayor que 12.';
+            return 'Month cannot be greater than 12.';
         }
         const daysInMonth = new Date(2024, monthNum, 0).getDate();
         if (dayNum > daysInMonth) {
-            return `El mes ${monthNum} solo tiene ${daysInMonth} días.`;
+            return `Month ${monthNum} only has ${daysInMonth} days.`;
         }
         return null;
     };
@@ -121,11 +121,11 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                 const { lat, lon } = data[0]; // Tomamos el primer resultado
                 setLocation({ lat: parseFloat(lat), lon: parseFloat(lon) });
             } else {
-                setError(`No se encontraron resultados para "${searchQuery}".`);
+                setError(`No results found for "${searchQuery}".`);
             }
         } catch (err) {
-            console.error("Error en la geocodificación:", err);
-            setError("No se pudo conectar al servicio de búsqueda de ubicaciones.");
+            console.error("Geocoding error:", err);
+            setError("Could not connect to the location search service.");
         } finally {
             setLoading(false);
         }
@@ -138,7 +138,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
 
         const dateError = validateDate(date.day, date.month);
         if (dateError) {
-            setError(`Error en la fecha: ${dateError}`);
+            setError(`Date Error: ${dateError}`);
             setLoading(false);
             return;
         }
@@ -165,8 +165,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
             setResults(data);
 
         } catch (err) {
-            console.error("Error en la consulta a la API:", err);
-            setError(err.message || 'Error desconocido al conectar con el servicio de datos.');
+            console.error("API query error:", err);
+            setError(err.message || 'Unknown error connecting to the data service.');
         } finally {
             setLoading(false); 
         }
@@ -178,8 +178,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
     return (
         <div className="container homepage-container">
             <header className="page-header">
-                <h1>Tu Guía de Clima Histórico</h1>
-                <p>Planifica tu evento al aire libre con datos de observación terrestre de la NASA.</p>
+                <h1>Your Historical Weather Guide</h1>
+                <p>Plan your outdoor event with NASA's earth observation data.</p>
             </header>
 
             {/* --- NUEVO: Buscador de Ubicaciones --- */}
@@ -189,10 +189,10 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Ingrese una ubicación:"
+                        placeholder="Enter a location:"
                         className="location-search-input"
                     />
-                    <button type="submit" className="location-search-btn" aria-label="Buscar ubicación">
+                    <button type="submit" className="location-search-btn" aria-label="Search location">
                         <FaSearch />
                     </button>
                 </form>
@@ -201,10 +201,10 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
             <div className="control-panel">
                 {/* Inputs de consulta */}
                 <div className="query-card">
-                    <h2>Define tu Consulta</h2>
+                    <h2>Define Your Query</h2>
                     
                     <div className="input-group">
-                        <label>📍 Latitud:</label>
+                        <label>📍 Latitude:</label>
                         <input 
                             type="number" 
                             name="lat"
@@ -212,7 +212,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                             value={location.lat} 
                             onChange={handleLocationChange} 
                         />
-                        <label>📍 Longitud:</label>
+                        <label>📍 Longitude:</label>
                         <input 
                             type="number" 
                             name="lon"
@@ -223,7 +223,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                     </div>
 
                     <div className="input-group">
-                        <label>📅 Día:</label>
+                        <label>📅 Day:</label>
                         <input 
                             id="day-input"
                             type="number"
@@ -234,7 +234,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                             onChange={handleDateChange}
                             onKeyDown={handleDateKeyDown} 
                         />
-                        <label>📅 Mes:</label>
+                        <label>📅 Month:</label>
                         <input 
                             id="month-input"
                             type="number"
@@ -248,7 +248,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                     </div>
                     
                     <div className="variable-selector">
-                        <label>Condición a Analizar:</label>
+                        <label>Condition to Analyze:</label>
                         <div className="variable-buttons">
                             {VARIABLES.map(v => (
                                 <button
@@ -267,7 +267,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                         onClick={handleSearch} 
                         disabled={loading}
                     >
-                        {loading ? 'Analizando Datos...' : 'Analizar Probabilidades'}
+                        {loading ? 'Analyzing Data...' : 'Analyze Probabilities'}
                     </button>
                     
                     {error && <p className="error-message">🚨 {error}</p>}
@@ -275,7 +275,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
 
                 {/* Mapa */}
                 <div className="map-card">
-                    <h3 className="map-title">Ubicación Seleccionada</h3>
+                    <h3 className="map-title">Selected Location</h3>
                     <MapContainer 
                         center={[location.lat, location.lon]} 
                         zoom={5} 
@@ -294,7 +294,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
             {results && results.reprocessing && (
                 <div className="results-section">
                      <div className="reprocessing-card">
-                        <h3>⚙️ Procesando Datos Históricos</h3>
+                        <h3>⚙️ Processing Historical Data</h3>
                         <p>{results.message}</p>
                     </div>
                 </div>
@@ -303,7 +303,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
             {results && (
                 <div className="results-section">
                     <h2 className="results-header">
-                        Resultados Históricos para {results.location || 'Ubicación'} en {results.date || 'Fecha'}
+                        Historical Results for {results.location || 'Location'} on {results.date || 'Date'}
                     </h2>
                     
                     <div className="results-grid">
@@ -318,10 +318,10 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                         />
 
                         <div className="data-visualization-card">
-                            <h3>Detalles del Análisis</h3>
+                            <h3>Analysis Details</h3>
                             <p className="detail-description">{results.detailDescription}</p>
                             
-                            <h3 style={{marginTop: '15px'}}>Visualización</h3>
+                            <h3 style={{marginTop: '15px'}}>Visualization</h3>
                             <DistributionChart 
                                 mean={results.historicalMean}
                                 threshold={results.threshold}
@@ -330,7 +330,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable 
                             
                             {results.downloadLink && (
                                 <a href={results.downloadLink} target="_blank" rel="noopener noreferrer" className="download-link">
-                                    Descargar Datos Históricos de NASA (OPeNDAP) ↓
+                                    Download Historical Data from NASA (OPeNDAP) ↓
                                 </a>
                             )}
                         </div>

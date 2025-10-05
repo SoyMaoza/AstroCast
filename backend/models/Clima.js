@@ -91,17 +91,17 @@ class EstadisticasClima {
     // --- MEJORA: Mensaje especial si no se encontraron datos ---
     if (this.aniosAnalizados === 0) {
       return `
-Resumen para la ${this.ubicacion} el día ${this.diaDelAnio}:
-No se encontraron datos históricos suficientes en los archivos de la NASA para esta ubicación y fecha específicas. No es posible calcular un pronóstico probabilístico.
+Summary for ${this.ubicacion} on ${this.diaDelAnio}:
+Not enough historical data was found in NASA's archives for this specific location and date. It is not possible to calculate a probabilistic forecast.
       `.trim();
     }
     return `
-Resumen para la ${this.ubicacion} el día ${this.diaDelAnio} (basado en ${this.aniosAnalizados} años de historia):
-- Temperatura: Promedio de ${this.estadisticas.temperatura.promedio}°C, con máximas históricas de ${this.estadisticas.temperatura.max}°C.
-- Viento: Promedio de ${this.estadisticas.viento.promedio} km/h.
-- Probabilidad de día muy caliente (>32°C): ${this.getProbabilidadCalor(32)}%.
-- Probabilidad de día muy ventoso (>25 km/h): ${this.getProbabilidadVientoFuerte(25)}%.
-- Probabilidad de lluvia: ${this.getProbabilidadLluvia()}%.
+Summary for ${this.ubicacion} on ${this.diaDelAnio} (based on ${this.aniosAnalizados} years of history):
+- Temperature: Average of ${this.estadisticas.temperatura.promedio}°C, with historical highs of ${this.estadisticas.temperatura.max}°C.
+- Wind: Average of ${this.estadisticas.viento.promedio} km/h.
+- Probability of a very hot day (>32°C): ${this.getProbabilidadCalor(32)}%.
+- Probability of a very windy day (>25 km/h): ${this.getProbabilidadVientoFuerte(25)}%.
+- Probability of rain: ${this.getProbabilidadLluvia()}%.
     `.trim();
   }
 }

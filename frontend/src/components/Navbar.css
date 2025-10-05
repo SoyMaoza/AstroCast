@@ -97,7 +97,22 @@
     background-color: #E0E0E0;
 }
 
+/* --- ESTILOS PARA EL BOTÓN DE IDIOMA --- */
+.language-switcher-btn {
+    background-color: #f0f4f8;
+    border: 1px solid #dce5ec;
+    color: var(--color-text-secondary);
+    padding: 8px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
 
+.language-switcher-btn:hover {
+    background-color: #e3eaf1;
+    border-color: #cdd8e2;
+}
 
 @media (max-width: 768px) {
     .navbar {
