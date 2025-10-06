@@ -12,10 +12,7 @@ const port = process.env.PORT || 3001;
 
 
 const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'https://astro-cast.vercel.app',
-  ],
+  origin: '*', // Allow all origins
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
