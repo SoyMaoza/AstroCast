@@ -9,7 +9,7 @@ const timelineEvents = [
         title: "Consolidation of Satellite Earth Observation",
         description:
             "NASA and other space agencies consolidate the use of satellites, such as the Landsat series, for the systematic and long-term monitoring of the Earth's surface and atmosphere, laying the foundation for modern climatology.",
-        image: "/assets/history/etapa-1.jpg",
+        image: "/assets/history/phase-1.jpg",
         context: {
             icon: "🛰️",
             text: "The dawn of the digital age and global satellite communication."
@@ -21,7 +21,7 @@ const timelineEvents = [
         title: "Montreal Protocol",
         description:
             "Signing of a historic international treaty designed to protect the ozone layer by phasing out the production of numerous substances responsible for its depletion. It is considered the most successful environmental agreement to date.",
-        image: "/assets/history/etapa-2.jpg",
+        image: "/assets/history/phase-2.jpg",
         context: {
             icon: "🌍",
             text: "A growing global awareness of environmental issues emerges."
@@ -33,7 +33,7 @@ const timelineEvents = [
         title: "Creation of the IPCC",
         description:
             "The Intergovernmental Panel on Climate Change (IPCC) is established by the World Meteorological Organization (WMO) and the United Nations Environment Programme (UNEP) to provide comprehensive scientific assessments on climate change.",
-        image: "/assets/history/etapa-3.jpg",
+        image: "/assets/history/phase-3.jpg",
         context: {
             icon: "🔬",
             text: "Scientific consensus on climate change begins to solidify."
@@ -45,7 +45,7 @@ const timelineEvents = [
         title: "Adoption of the Kyoto Protocol",
         description:
             "A protocol is adopted under the United Nations Framework Convention on Climate Change (UNFCCC), committing industrialized countries to limit and reduce their greenhouse gas (GHG) emissions.",
-        image: "/assets/history/etapa-4.jpg",
+        image: "/assets/history/phase-4.jpg",
         context: {
             icon: "🏛️",
             text: "International policy starts to formally address GHG emissions."
@@ -57,7 +57,7 @@ const timelineEvents = [
         title: "Launch of the Terra Satellite (EOS AM-1)",
         description:
             "NASA launches Terra, the flagship satellite of the Earth Observing System (EOS), designed to monitor the state of Earth's environment and changes in its climate system. Its instruments measure key variables such as radiation, clouds, aerosols, and land cover.",
-        image: "/assets/history/etapa-5.jpeg",
+        image: "/assets/history/phase-5.jpeg",
         context: {
             icon: "📡",
             text: "Advanced Earth observation systems provide unprecedented data."
@@ -69,7 +69,7 @@ const timelineEvents = [
         title: "Signing of the Paris Agreement",
         description:
             "A landmark agreement within the UNFCCC that establishes measures for the reduction of GHG emissions. Its goal is to limit global warming to well below 2°C, preferably to 1.5°C, compared to pre-industrial levels.",
-        image: "/assets/history/etapa-6.jpg",
+        image: "/assets/history/phase-6.jpg",
         context: {
             icon: "🤝",
             text: "A global commitment to a sustainable future is forged."
@@ -81,7 +81,7 @@ const timelineEvents = [
         title: "Milestone in Global Temperature Rise",
         description:
             "The year 2020 ties with 2016 as the warmest year on record, clear evidence of the long-term warming trend. The decade 2011-2020 was the warmest recorded, according to data from NASA and NOAA.",
-        image: "/assets/history/etapa-7.jpg",
+        image: "/assets/history/phase-7.jpg",
         context: {
             icon: "🌡️",
             text: "The impacts of climate change become increasingly tangible."
@@ -93,7 +93,7 @@ const timelineEvents = [
         title: "Publication of the IPCC Sixth Assessment Report (AR6)",
         description:
             "The IPCC releases the first part of its Sixth Assessment Report, calling it a 'code red for humanity.' The report unequivocally concludes that human influence has warmed the atmosphere, ocean, and land at an unprecedented rate.",
-        image: "/assets/history/etapa-8.jpg",
+        image: "/assets/history/phase-8.jpg",
         context: {
             icon: "❗",
             text: "The scientific community issues its most urgent warning yet."
@@ -102,10 +102,10 @@ const timelineEvents = [
     {
         year: "2025",
         stage: "Phase 9",
-        title: "AstroCast: Probability and NASA Data",
+        title: "AstroCast: Probability with NASA Data",
         description:
             "Launch of AstroCast in the NASA Space Apps Challenge, an application that uses Earth observation data to provide probabilistic analyses of climate conditions, enabling users to make informed decisions.",
-        image: "/assets/history/etapa9.webp",
+        image: "/assets/history/phase-9.webp",
         context: {
             icon: "🚀",
             text: "Data democratization empowers individuals to take action."
