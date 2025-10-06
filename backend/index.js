@@ -497,7 +497,7 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
     }
     return stats;
 }
-app.post("/api/climate-probability", async (req, res) => {
+app.post("/climate-probability", async (req, res) => {
     const { lat, lon, day, month, variable } = req.body;
     try {
         const latRounded = parseFloat(lat.toFixed(2));
