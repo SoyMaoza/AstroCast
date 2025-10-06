@@ -8,7 +8,7 @@ const timelineEvents = [
         stage: "Phase 1",
         title: "Consolidation of Satellite Earth Observation",
         description:
-            "NASA and other space agencies consolidate the use of satellites, such as the Landsat series, for the systematic and long-term monitoring of the Earth's surface and atmosphere, laying the foundation for modern climatology.",
+            "NASA and other space agencies consolidated the use of satellites, such as the Landsat series, for the systematic and long-term monitoring of the Earth's surface and atmosphere, laying the foundation for modern climatology.",
         image: "/assets/history/etapa-1.jpg",
         context: {
             icon: "🛰️",
