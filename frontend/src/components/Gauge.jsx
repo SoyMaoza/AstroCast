@@ -6,13 +6,11 @@ const Gauge = ({ probability }) => {
     const [rotation, setRotation] = useState(-90);
 
     useEffect(() => {
-        const animationDuration = 1500; // 1.5 seconds
+        const animationDuration = 1500;
         const finalRotation = -90 + (probability / 100) * 180;
 
-        // Animate the needle
         setRotation(finalRotation);
 
-        // Animate the number "count-up"
         let startTimestamp = null;
         const step = (timestamp) => {
             if (!startTimestamp) startTimestamp = timestamp;
@@ -23,16 +21,13 @@ const Gauge = ({ probability }) => {
             if (progress < 1) {
                 window.requestAnimationFrame(step);
             } else {
-                // Ensure the final number is exact
                 setDisplayProbability(probability);
             }
         };
 
         window.requestAnimationFrame(step);
 
-        // Cleanup function
         return () => {
-            // Reset for next render if needed, though new props will trigger a new effect
             setDisplayProbability(0);
             setRotation(-90);
         };

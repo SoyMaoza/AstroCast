@@ -8,7 +8,6 @@ const {
 
 const router = express.Router();
 
-// --- Configuración de Gemini ---
 const API_KEY = process.env.API_KEY;
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 const modelName = "gemini-2.5-flash";
@@ -130,7 +129,7 @@ router.post('/', async (req, res) => {
             const finalResponse = await chat.sendMessage({ message: finalPrompt });
             responseText = finalResponse.text;
 
-        } else if (esConsultaClima) {
+        } else if (esConsultaClima) { 
             console.log("✅ Climate Logic activated.");
             const estadisticas = await getHistoricalStatisticsForVariable(variable, { lat: parseFloat(lat), lon: parseFloat(lon) }, day, month);
             const resumenDatos = estadisticas.generarTextoResumen();

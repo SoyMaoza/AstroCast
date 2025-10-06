@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Home.css';
 import ProbabilityCard from '../../components/ProbabilityCard';
-import Gauge from '../../components/Gauge'; // --- NUEVO: Importar el componente Gauge ---
-import { FaSearch } from 'react-icons/fa'; // Importamos el ícono de búsqueda
+import Gauge from '../../components/Gauge';
+import { FaSearch } from 'react-icons/fa';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import DistributionChart from '../../components/DistributionChart';
-// The Chatbox is no longer imported or rendered here; it lives in App.jsx
 import 'leaflet/dist/leaflet.css';
 import html2canvas from 'html2canvas';
 import L from 'leaflet';
 import graph_download_icon from "../../components/assets/icons/graph-download-icon.svg";
 
-// Use the environment variable for the backend URL in production,
-// otherwise fall back to the local URL for development.
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
 
 const kelvinToCelsius = (k) => k - 273.15;
@@ -51,16 +48,14 @@ function LocationMarker({ location, setLocation }) {
   return location.lat === null ? null : <Marker position={[location.lat, location.lon]} />;
 }
 
-// ✅ Receives all necessary states and functions from App.jsx
 const HomePage = ({ location, setLocation, date, setDate, variable, setVariable, activity, setActivity, setResults }) => {
-  // Local state for this page's UI only
   const [localResults, setLocalResults] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [temperatureUnit, setTemperatureUnit] = useState('C');
   const resultsRef = useRef(null);
-  const chartRef = useRef(null); // <-- NEW: Ref to capture the chart element
+  const chartRef = useRef(null);
 
   useEffect(() => {
     if (localResults && resultsRef.current) {
@@ -72,11 +67,10 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
     setLoading(true);
     setError(null);
     setLocalResults(null);
-    setResults(null); // Clears the global results in App.jsx to avoid re-triggers
+    setResults(null);
 
     const dayNum = parseInt(date.day, 10);
     const monthNum = parseInt(date.month, 10);
-    // ... (date validation function would go here if you have one)
 
     try {
       const response = await fetch(`${API_BASE_URL}/climate-probability`, {
@@ -95,8 +89,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
       }
 
       const data = await response.json();
-      setLocalResults(data); // Updates the UI of this page
-      setResults(data);     // ✅ Sends the results to App.jsx so the Chatbox can react
+      setLocalResults(data);
+      setResults(data);
     } catch (err) {
       console.error("API query error:", err);
       setError(err.message || 'Unknown error connecting to the data service.');
@@ -161,13 +155,10 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
     }
   }
 
-  // --- NEW: Dynamic detail description based on the variable's historical range ---
   const startYear = (localResults && (localResults.variable === 'rainy')) ? 1998 : 1980;
   const historicalRange = `${startYear}-${new Date().getFullYear()}`;
   const detailDescription = localResults ? `The probability of the '${localResults.variable}' condition occurring is ${localResults.probability}%, based on the historical average of ${displayMean.toFixed(2)} ${displayUnitSymbol} for the range ${historicalRange}.` : "";
 
-
-  // --- NEW: Chart Download Functionality ---
   const handleChartDownload = async () => {
     if (!chartRef.current) {
       console.error("Chart element not found for download.");
@@ -176,8 +167,8 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
 
     try {
       const canvas = await html2canvas(chartRef.current, {
-        useCORS: true, // Important for external images/fonts if any
-        backgroundColor: '#FFFFFF', // --- FIX: Use a solid white background for the download ---
+        useCORS: true,
+        backgroundColor: '#FFFFFF',
       });
       const image = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
@@ -246,9 +237,9 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
             zoom={5} 
             scrollWheelZoom 
             style={{ height: '100%', width: '100%', borderRadius: '8px' }}
-            maxBounds={[[-85.0511, -Infinity], [85.0511, Infinity]]} /* Limits vertical panning but allows infinite horizontal scroll */
-            maxBoundsViscosity={1.0}                                 /* Makes the vertical boundaries solid */
-            minZoom={1}                                  /* Prevents zooming out too far */
+            maxBounds={[[-85.0511, -Infinity], [85.0511, Infinity]]}
+            maxBoundsViscosity={1.0}
+            minZoom={1}
           >
             <TileLayer
               attribution='&copy; OpenStreetMap'
@@ -289,7 +280,7 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
               <h3>Analysis Details</h3>
               <p className="detail-description">{detailDescription}</p>
               <h3 style={{ marginTop: '15px' }}>Visualization</h3>
-              <div ref={chartRef}> {/* <-- NEW: Wrapper with ref for capturing */}
+              <div ref={chartRef}>
                 <DistributionChart 
                   mean={localResults.historicalMean}
                   threshold={localResults.threshold}
@@ -297,7 +288,6 @@ const HomePage = ({ location, setLocation, date, setDate, variable, setVariable,
                   displayUnit={temperatureUnit}
                 />
               </div>
-              {/* --- NEW DOWNLOAD BUTTON AS REQUESTED --- */}
               <div className="chart-actions">
                 <button className="chart-download-btn" title="Download Chart" onClick={handleChartDownload}>
                   <img src={graph_download_icon} alt="Download icon" />

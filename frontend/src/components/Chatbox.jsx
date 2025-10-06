@@ -3,9 +3,6 @@ import "./Chatbox.css";
 import { MdOutlineMessage } from "react-icons/md";
 import { IoMdSend } from "react-icons/io";
 
-// --- MEJORA: URL de API dinámica y robusta para despliegue ---
-// Usa la variable de entorno VITE_BACKEND_URL si está definida (para producción),
-// de lo contrario, usa la URL de desarrollo local.
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
 const API_URL = `${API_BASE_URL}/chat`;
 
@@ -23,38 +20,27 @@ const Chatbox = ({ location, date, variable }) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // --- ESTADOS DE WHATSAPP ---
   const [isSharing, setIsSharing] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState("");
-  // ----------------------------
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /**
-   * --- FUNCIÓN MODIFICADA ---
-   * Convierte texto a HTML. Los links ahora se abren en la misma pestaña.
-   * @param {string} text - El texto a formatear.
-   * @returns {string} - Un string con etiquetas HTML.
-   */
   const formatMessageToHTML = (text) => {
     let formattedText = text;
 
-    // 1. Convierte **negritas** a <strong>negritas</strong>
     formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     
-    // 2. Convierte links de Markdown [texto](url) a <a href="url">texto</a>
     formattedText = formattedText.replace(
       /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
-      '<a href="$2">$1</a>' // Se quitó target="_blank"
+      '<a href="$2">$1</a>'
     );
 
-    // 3. Convierte links de texto plano (http://...) a hipervínculos clickeables.
     const urlRegex = /(?<!href=")(?<!\]\()((https?:\/\/[^\s]+))/g;
     formattedText = formattedText.replace(
         urlRegex, 
-        '<a href="$1">$1</a>' // Se quitó target="_blank"
+        '<a href="$1">$1</a>'
     );
     
     return formattedText;
@@ -89,7 +75,6 @@ const Chatbox = ({ location, date, variable }) => {
           message: userMessage,
           lat: location.lat,
           lon: location.lon,
-          // --- CORRECCIÓN: Enviar la fecha como objeto para consistencia ---
           day: parseInt(date.day),
           month: parseInt(date.month),
           variable: variable,
@@ -229,9 +214,6 @@ const Chatbox = ({ location, date, variable }) => {
           )}
         </div>
       )}
-      {/* --- CORRECCIÓN: Se restaura la estructura original del contenedor --- */}
-      {/* El botón de apertura ahora está dentro del mismo contenedor que el chat, */}
-      {/* pero solo se renderiza si el chat está cerrado. */}
       <div className="chat-toggle-container">
         {!isOpen && (
           <button onClick={toggleChat} className="chat-toggle-btn">
