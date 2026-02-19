@@ -4,6 +4,9 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const { obtenerEstadisticasHistoricas } = require('./data/Clima.js');
 const { execFile } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 dotenv.config();
 const mongoose = require("mongoose");
 const app = express();
@@ -14,7 +17,10 @@ const port = process.env.PORT || 3001;
 const corsOptions = {
   origin: [
     'http://localhost:5173',
+    'http://localhost:5174',
     'https://astro-cast.vercel.app',
+    'https://astrocast.onrender.com',
+        process.env.FRONTEND_URL, // Agrega esto para permitir tu frontend de Render dinámicamente
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -23,6 +29,19 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use(express.json());
+
+// Generate .netrc file for NASA authentication to prevent curl error 26
+const netrcPath = path.join(os.tmpdir(), '.netrc');
+const nasaUser = process.env.NASA_USERNAME || 'USER_NOT_SET';
+const nasaPass = process.env.NASA_PASSWORD || 'PASS_NOT_SET';
+const netrcContent = `machine urs.earthdata.nasa.gov login ${nasaUser} password ${nasaPass}`;
+try {
+    fs.writeFileSync(netrcPath, netrcContent);
+    console.log("✅ .netrc file created/updated successfully.");
+} catch (err) {
+    console.error("❌ Error creating .netrc file:", err);
+}
+
 const API_KEY = process.env.API_KEY;
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 const modelName = "gemini-2.5-flash";
@@ -225,8 +244,8 @@ const coordinateCache = new Map();
 function fetchWithCurl(url, isJson = false) {
     return new Promise((resolve, reject) => {
         const path = require('path');
-        const cookieFile = path.join(__dirname, 'nasa-cookies.txt');
-        const netrcFile = path.join(__dirname, '.netrc');
+        const cookieFile = path.join(os.tmpdir(), 'nasa-cookies.txt');
+        const netrcFile = path.join(os.tmpdir(), '.netrc');
         const args = ['-L', '-k', '--netrc-file', netrcFile, '-c', cookieFile, '-b', cookieFile, url];
         const options = { encoding: isJson ? 'utf8' : 'buffer', maxBuffer: 1024 * 1024 * 50 };
         execFile('curl', args, options, (error, stdout, stderr) => {
@@ -315,8 +334,7 @@ function getMerra2FilePrefix(year) {
     if (year >= 1980) return "100";
     return "400";
 }
-async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
-    const variableName = Array.isArray(config.apiVariable) ? 'windy' : config.apiVariable;
+async function getHistoricalStatistics(variableName, config, day, month, latIndex, lonIndex) {
     const cachedStat = await HistoricalStat.findOne({ day, month, latIndex, lonIndex, variable: variableName });
     if (cachedStat) {
         console.log(`[Cache-Stats] Statistics found in DB for ${day}/${month}. They will be used for the threshold, but the probability will be recalculated.`);
@@ -502,6 +520,9 @@ async function getHistoricalStatistics(config, day, month, latIndex, lonIndex) {
 }
 app.post("/api/climate-probability", async (req, res) => {
     const { lat, lon, day, month, variable } = req.body;
+    if (lat === null || lon === null || lat === undefined || lon === undefined) {
+        return res.status(400).json({ success: false, message: "Latitude and Longitude are required." });
+    }
     try {
         const latRounded = parseFloat(lat.toFixed(2));
         const lonRounded = parseFloat(lon.toFixed(2));
@@ -541,7 +562,7 @@ app.post("/api/climate-probability", async (req, res) => {
         const latIndex = findClosestIndex(lat, lats);
         const lonIndex = findClosestIndex(lon, lons);
         console.log(`[Index] Indices found -> Lat: ${latIndex}, Lon: ${lonIndex}`);
-        const stats = await getHistoricalStatistics(config, day, month, latIndex, lonIndex);
+        const stats = await getHistoricalStatistics(variable, config, day, month, latIndex, lonIndex);
         
         const displayThreshold = config.threshold(stats);
         const mapRange = (value, in_min, in_max, out_min, out_max) => {
@@ -614,7 +635,7 @@ app.post("/api/climate-probability", async (req, res) => {
             res.json(result);
         }
     } catch (error) {
-        console.error("❌ FATAL ERROR IN API ROUTE:", error.message);
+        console.error("❌ FATAL ERROR IN API ROUTE:", error);
         if (error.response?.status === 401) {
             return res.status(401).json({ success: false, message: "NASA API Error: 401 Unauthorized. Check your credentials in the .env file" });
         }
@@ -654,7 +675,7 @@ app.get("/api/download-data", async (req, res) => {
         const latIndex = findClosestIndex(lat, lats);
         const lonIndex = findClosestIndex(lon, lons);
 
-        const stats = await getHistoricalStatistics(config, parseInt(day), parseInt(month), latIndex, lonIndex);
+        const stats = await getHistoricalStatistics(variable, config, parseInt(day), parseInt(month), latIndex, lonIndex);
 
         let finalValues = stats.values;
         let finalUnit = config.unit;

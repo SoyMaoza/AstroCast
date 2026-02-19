@@ -12,7 +12,8 @@ const InfoTabla = () => {
   const messagesEndRef = useRef(null);
 
   // URL del endpoint del servidor Node.js
-  const BOT_URL = 'http://localhost:3001/api/chat'; 
+    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
+    const BOT_URL = `${API_BASE_URL}/chat`; 
 
   // Desplazamiento automático al final de la conversación
   const scrollToBottom = () => {
